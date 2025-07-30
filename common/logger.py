@@ -2,7 +2,7 @@ import logging
 import os
 import sys
 from pathlib import Path
-from .utils import ensure_dir
+from .config import ensure_dir
 
 class Colors:
     RED = '\033[0;31m'

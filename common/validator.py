@@ -1,6 +1,6 @@
 import shutil
 from pathlib import Path
-from .utils import CONFIG
+from .config import CONFIG
 
 def check_tools(logger):
     required_tools = set(CONFIG['tools']['required'])
