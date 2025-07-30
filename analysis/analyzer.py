@@ -5,56 +5,7 @@ from pathlib import Path
 from tqdm import tqdm
 from ..common.config import CONFIG, ensure_dir
 
-def run(args, config, logger):
-    # Handle independent mode
-    if args.independent:
-        return run_independent(args, config, logger)
-    
-    # Normal mode - process all targets
-    for target in args.targets:
-        target_dir = Path(args.output) / target
-        js_files_dir = target_dir / CONFIG['dirs']['js_files']
-        js_files = list(js_files_dir.glob("*.js"))
-        if not js_files:
-            logger.log('ERROR', f"[{target}] No JS files found for analysis.")
-            continue
-        
-        logger.log('INFO', f"[{target}] Found {len(js_files)} JS files to analyze")
-        
-        max_workers = CONFIG['analysis_threads']
-        results_dir = target_dir / CONFIG['dirs']['results']
-        for subdir in CONFIG['results_dirs']:
-            ensure_dir(results_dir / subdir)
-        
-        processed_count = 0
-        failed_count = 0
-        
-        def analyze_file(js_file, pbar):
-            nonlocal processed_count, failed_count
-            try:
-                analyze_js_file_optimized(target, target_dir, js_file, logger)
-                processed_count += 1
-                pbar.set_postfix({
-                    'Processed': processed_count,
-                    'Failed': failed_count
-                })
-                return True
-            except Exception as e:
-                failed_count += 1
-                pbar.set_postfix({
-                    'Processed': processed_count,
-                    'Failed': failed_count
-                })
-                return False
-        
-        with tqdm(total=len(js_files), desc=f"[{target}] Analyzing JS files", unit="file") as pbar:
-            with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-                futures = [executor.submit(analyze_file, js_file, pbar) for js_file in js_files]
-                for future in concurrent.futures.as_completed(futures):
-                    future.result()
-                    pbar.update(1)
-        
-        logger.log('SUCCESS', f"[{target}] Analysis complete: {processed_count} processed, {failed_count} failed")
+# The main entry point for this module is 'run', already defined.
 
 def run_independent(args, config, logger):
     """Run analyze module independently with custom input directory"""

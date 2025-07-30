@@ -4,15 +4,15 @@ from pathlib import Path
 from ..common.config import CONFIG
 from ..common.logger import Logger
 from ..common.help_ui import show_help, show_command_help
-from ..discovery.crawler import crawl_urls
-from ..validation.validator import validate_urls
-from ..processing.deduplicator import remove_duplicates
-from ..download.downloader import acquire_files
-from ..analysis.analyzer import analyze_files
-from ..enumeration.enumerator import enumerate_files
+from ..discovery.crawler import run as discovery_run
+from ..validation.validator import run as validation_run
+from ..processing.deduplicator import run as processing_run
+from ..download.downloader import run as download_run
+from ..analysis.analyzer import run as analysis_run
+from ..enumeration.enumerator import run as enumeration_run
 from ..common.validator import check_tools
-from ..reporting.reporter import generate_report
-from ..reconnaissance.github_scanner import scan_github
+from ..reporting.reporter import run as reporting_run
+from ..reconnaissance.github_scanner import run as reconnaissance_run
 from ..passive_data.passive_data import run as passive_param_run
 from ..fallparam.fallparam import run as fallparam_run
 
@@ -124,22 +124,22 @@ def main():
 
     for command in args.commands:
         if command == 'discovery':
-            crawl_urls(args, CONFIG, logger)
+            discovery_run(args, CONFIG, logger)
         elif command == 'validation':
-            validate_urls(args, CONFIG, logger)
+            validation_run(args, CONFIG, logger)
         elif command == 'processing':
-            remove_duplicates(args, CONFIG, logger)
+            processing_run(args, CONFIG, logger)
         elif command == 'download':
             import asyncio
-            asyncio.run(acquire_files(args, CONFIG, logger))
+            asyncio.run(download_run(args, CONFIG, logger))
         elif command == 'analysis':
-            analyze_files(args, CONFIG, logger)
+            analysis_run(args, CONFIG, logger)
         elif command == 'enumeration':
-            enumerate_files(args, CONFIG, logger)
+            enumeration_run(args, CONFIG, logger)
         elif command == 'reporting':
-            generate_report(args, CONFIG, logger)
+            reporting_run(args, CONFIG, logger)
         elif command == 'reconnaissance':
-            scan_github(args, CONFIG, logger)
+            reconnaissance_run(args, CONFIG, logger)
         elif command == 'passive-param':
             passive_param_run(args, CONFIG, logger)
         elif command == 'fallparam':

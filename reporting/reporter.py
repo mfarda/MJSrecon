@@ -4,50 +4,7 @@ from pathlib import Path
 from datetime import datetime
 from ..common.config import CONFIG, ensure_dir
 
-def run(args, config, logger):
-    """Generate comprehensive report with findings statistics"""
-    # Handle independent mode
-    if args.independent:
-        return run_independent(args, config, logger)
-    
-    logger.log('INFO', "Generating comprehensive reconnaissance report...")
-    
-    total_stats = {
-        'targets': {},
-        'summary': {
-            'total_targets': 0,
-            'total_js_urls': 0,
-            'total_live_urls': 0,
-            'total_downloaded_files': 0,
-            'total_secrets': 0,
-            'total_endpoints': 0,
-            'total_fuzzing_findings': 0
-        }
-    }
-    
-    # Analyze each target
-    for target in args.targets:
-        target_dir = Path(args.output) / target
-        if not target_dir.exists():
-            logger.log('WARN', f"[{target}] Target directory not found, skipping...")
-            continue
-            
-        target_stats = analyze_target(target, target_dir, logger)
-        total_stats['targets'][target] = target_stats
-        
-        # Update summary
-        total_stats['summary']['total_targets'] += 1
-        total_stats['summary']['total_js_urls'] += target_stats.get('gathering', {}).get('total_urls', 0)
-        total_stats['summary']['total_live_urls'] += target_stats.get('verification', {}).get('live_urls', 0)
-        total_stats['summary']['total_downloaded_files'] += target_stats.get('download', {}).get('downloaded_files', 0)
-        total_stats['summary']['total_secrets'] += target_stats.get('analysis', {}).get('total_secrets', 0)
-        total_stats['summary']['total_endpoints'] += target_stats.get('analysis', {}).get('total_endpoints', 0)
-        total_stats['summary']['total_fuzzing_findings'] += target_stats.get('fuzzing', {}).get('total_findings', 0)
-    
-    # Generate and display report
-    generate_report(total_stats, args.output, logger)
-    
-    return len(total_stats['targets']) > 0
+# The main entry point for this module is 'run', already defined.
 
 def run_independent(args, config, logger):
     """Run report module independently with custom input directory"""

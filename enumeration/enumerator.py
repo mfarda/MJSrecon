@@ -8,6 +8,8 @@ from tqdm import tqdm
 from urllib.parse import urlparse
 from ..common.config import CONFIG, ensure_dir
 
+# The main entry point for this module is 'run', already defined.
+
 def run(args, config, logger):
     """Run fuzzing module in chain mode or independent mode"""
     # Handle independent mode
