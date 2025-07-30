@@ -2,7 +2,7 @@ import json
 import os
 from pathlib import Path
 from datetime import datetime
-from ..utils.utils import CONFIG, ensure_dir
+from ..common.config import CONFIG, ensure_dir
 
 def run(args, config, logger):
     """Generate comprehensive report with findings statistics"""

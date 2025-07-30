@@ -13,7 +13,7 @@ from typing import Set, List, Dict
 import requests
 from tqdm import tqdm
 
-from ..utils.utils import CONFIG, ensure_dir
+from ..common.config import CONFIG, ensure_dir
 
 
 def run(args, config, logger):

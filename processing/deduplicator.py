@@ -1,6 +1,6 @@
 import requests
 from pathlib import Path
-from ..utils.utils import CONFIG, ensure_dir
+from ..common.config import CONFIG, ensure_dir
 import concurrent.futures
 from tqdm import tqdm
 import hashlib

@@ -3,7 +3,7 @@ import subprocess
 import json
 from pathlib import Path
 from tqdm import tqdm
-from ..utils.utils import CONFIG, ensure_dir
+from ..common.config import CONFIG, ensure_dir
 
 def run(args, config, logger):
     # Handle independent mode

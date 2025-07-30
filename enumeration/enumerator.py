@@ -6,7 +6,7 @@ import time
 from pathlib import Path
 from tqdm import tqdm
 from urllib.parse import urlparse
-from ..utils.utils import CONFIG, ensure_dir
+from ..common.config import CONFIG, ensure_dir
 
 def run(args, config, logger):
     """Run fuzzing module in chain mode or independent mode"""

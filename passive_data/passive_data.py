@@ -14,7 +14,7 @@ from typing import Set, List
 import requests
 from tqdm import tqdm
 
-from ..utils.utils import CONFIG, ensure_dir
+from ..common.config import CONFIG, ensure_dir
 from ..gather.gather import run as gather_run
 from ..verify.verify import run as verify_run
 
