@@ -34,30 +34,6 @@ class Colors:
     END = '\033[0m'
 
 
-def print_banner():
-    """Print the MJSRecon banner"""
-    banner = """
-███╗   ███╗     ██╗███████╗    ██████╗ ███████╗ ██████╗██╗  ██╗███╗   ██╗
-████╗ ████║     ██║██╔════╝    ██╔══██╗██╔════╝██╔════╝██║ ██╔╝████╗  ██║
-██╔████╔██║     ██║███████╗    ██████╔╝█████╗  ██║     █████╔╝ ██╔██╗ ██║
-██║╚██╔╝██║██   ██║╚════██║    ██╔══██╗██╔══╝  ██║     ██╔═██╗ ██║╚██╗██║
-██║ ╚═╝ ██║╚█████╔╝███████║    ██║  ██║███████╗╚██████╗██║  ██╗██║ ╚████║
-╚═╝     ╚═╝ ╚════╝ ╚══════╝    ╚═╝  ╚═╝╚══════╝ ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═══╝
-    """
-    
-    if RICH_AVAILABLE:
-        console = Console()
-        console.print(Panel.fit(
-            Text(banner, style="bold cyan"),
-            title="[bold yellow]MJSRecon[/bold yellow]",
-            subtitle="[italic]Modular JavaScript Reconnaissance Tool[/italic]",
-            border_style="cyan"
-        ))
-    else:
-        print(f"{Colors.CYAN}{Colors.BOLD}{banner}{Colors.END}")
-        print(f"{Colors.YELLOW}{Colors.BOLD}MJSRecon - Modular JavaScript Reconnaissance Tool{Colors.END}\n")
-
-
 def print_usage():
     """Print usage information"""
     usage_text = """
@@ -249,7 +225,6 @@ def print_footer():
 
 def show_help():
     """Display the complete help interface"""
-    print_banner()
     print_usage()
     print_commands()
     print_options()
@@ -260,7 +235,6 @@ def show_help():
 
 def show_command_help(command: str):
     """Show help for a specific command"""
-    print_banner()
     
     command_helps = {
         'gather': """
