@@ -129,3 +129,19 @@ async def run_independent(args, config, logger):
     logger.log('INFO', f"Files saved to: {output_dir}")
     
     return downloaded_count > 0
+
+def run(args, config, logger):
+    # Handle independent mode
+    if getattr(args, "independent", False):
+        return asyncio.run(run_independent(args, config, logger))
+    # Chain mode: download for all targets
+    for target in args.targets:
+        target_dir = Path(args.output) / target
+        ensure_dir(target_dir)
+        # Use the output of the previous step as input
+        input_file = args.input if args.input else (target_dir / config['files']['live_js'])
+        # Set output directory for downloads
+        download_args = args
+        download_args.input = str(input_file)
+        download_args.output = str(target_dir)
+        asyncio.run(run_independent(download_args, config, logger))

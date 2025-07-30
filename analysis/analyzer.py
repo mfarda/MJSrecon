@@ -224,3 +224,18 @@ def _run_command(cmd, timeout=CONFIG['timeouts']['command']):
         return 1, "", f"Command timed out after {timeout} seconds"
     except Exception as e:
         return 1, "", str(e)
+
+def run(args, config, logger):
+    # Handle independent mode
+    if getattr(args, "independent", False):
+        return run_independent(args, config, logger)
+    # Chain mode: analyze for all targets
+    for target in args.targets:
+        target_dir = Path(args.output) / target
+        ensure_dir(target_dir)
+        # Use the output of the previous step as input
+        input_dir = args.input if args.input else (target_dir / config['dirs']['js_files'])
+        analyze_args = args
+        analyze_args.input = str(input_dir)
+        analyze_args.output = str(target_dir)
+        run_independent(analyze_args, config, logger)

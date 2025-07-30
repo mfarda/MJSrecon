@@ -493,3 +493,18 @@ def generate_report(total_stats, output_dir, logger):
         json.dump(total_stats, f, indent=2, default=str)
     
     logger.log('INFO', f"JSON report saved to: {json_report_file}")
+
+def run(args, config, logger):
+    # Handle independent mode
+    if getattr(args, "independent", False):
+        return run_independent(args, config, logger)
+    # Chain mode: report for all targets
+    for target in args.targets:
+        target_dir = Path(args.output) / target
+        ensure_dir(target_dir)
+        # Use the output of the previous step as input
+        input_dir = args.input if args.input else target_dir
+        report_args = args
+        report_args.input = str(input_dir)
+        report_args.output = str(target_dir)
+        run_independent(report_args, config, logger)

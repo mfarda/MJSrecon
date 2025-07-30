@@ -180,3 +180,19 @@ def get_content_hash_map(urls, logger, target=""):
                 pbar.update(1)
     
     return content_hash_map 
+
+def run(args, config, logger):
+    # Handle independent mode
+    if getattr(args, "independent", False):
+        return run_independent(args, config, logger)
+    # Chain mode: deduplicate for all targets
+    for target in args.targets:
+        target_dir = Path(args.output) / target
+        ensure_dir(target_dir)
+        # Use the output of the previous step as input
+        input_file = args.input if args.input else (target_dir / CONFIG['files']['live_js'])
+        # Set output directory for deduplication
+        dedup_args = args
+        dedup_args.input = str(input_file)
+        dedup_args.output = str(target_dir)
+        run_independent(dedup_args, config, logger) 
