@@ -18,6 +18,8 @@ from ..utils.utils import CONFIG, ensure_dir
 from ..gather.gather import run as gather_run
 from ..verify.verify import run as verify_run
 
+# This module is now referred to as 'passive-param' in the CLI and documentation
+
 
 def run(args, config, logger):
     """Run passive data collection module"""

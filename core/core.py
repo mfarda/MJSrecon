@@ -1,19 +1,19 @@
 import argparse
 import sys
 from pathlib import Path
-from ..utils.utils import CONFIG
-from ..utils.logger import Logger
-from ..utils.help_ui import show_help, show_command_help
-from ..gather.gather import run as gather_run
-from ..verify.verify import run as verify_run
-from ..deduplicate.deduplicate import run as deduplicate_run
-from ..download.download import run as download_run
-from ..analyze.analyze import run as analyze_run
-from ..fuzzing.fuzzing import run as fuzzing_run
-from ..utils.toolcheck import check_tools
-from ..report.report import run as report_run
-from ..github.github_recon import run as github_run
-from ..passive_data.passive_data import run as passive_data_run
+from ..common.config import CONFIG
+from ..common.logger import Logger
+from ..common.help_ui import show_help, show_command_help
+from ..discovery.crawler import crawl_urls
+from ..validation.validator import validate_urls
+from ..processing.deduplicator import remove_duplicates
+from ..download.downloader import acquire_files
+from ..analysis.analyzer import analyze_files
+from ..enumeration.enumerator import enumerate_files
+from ..common.validator import check_tools
+from ..reporting.reporter import generate_report
+from ..reconnaissance.github_scanner import scan_github
+from ..passive_data.passive_data import run as passive_param_run
 from ..fallparam.fallparam import run as fallparam_run
 
 
@@ -35,10 +35,10 @@ def main():
         return
 
     parser = argparse.ArgumentParser(description="Modular JS Recon Tool", add_help=False)
-    parser.add_argument('commands', nargs='*', choices=['gather', 'verify', 'deduplicate', 'download', 'analyze', 'fuzz', 'report', 'github', 'passive-data', 'fallparam'], help='Commands to run in sequence')
+    parser.add_argument('commands', nargs='*', choices=['discovery', 'validation', 'processing', 'download', 'analysis', 'enumeration', 'reporting', 'reconnaissance', 'passive-param', 'fallparam'], help='Commands to run in sequence')
     parser.add_argument('-t', '--targets', help='Target domains (comma-separated) - required unless using --input')
     parser.add_argument('-o', '--output', default='./output', help='Output directory')
-    parser.add_argument('-d', '--depth', type=int, default=5, help='Katana crawl depth (for gather)')
+    parser.add_argument('-d', '--depth', type=int, default=5, help='Katana crawl depth (for discovery)')
     parser.add_argument('--input', help='Input file for the current command (overrides default)')
     parser.add_argument('--independent', action='store_true', help='Run modules independently with custom input files')
     
@@ -46,7 +46,7 @@ def main():
     parser.add_argument('-v', '--verbose', action='store_true', help='Enable verbose logging (debug level)')
     parser.add_argument('-q', '--quiet', action='store_true', help='Suppress info messages (warning level only)')
     
-    # Fuzzing specific arguments
+    # Enumeration (fuzzing) specific arguments
     parser.add_argument('--fuzz-mode', choices=['wordlist', 'permutation', 'both', 'off'], default='off', 
                        help='Fuzzing mode: wordlist only, permutation only, both, or off (default: off)')
     parser.add_argument('--fuzz-wordlist', help='Custom wordlist file for fuzzing (required if fuzz-mode is wordlist or both)')
@@ -56,11 +56,11 @@ def main():
     parser.add_argument('--fuzz-timeout', type=int, default=10, help='Timeout for each fuzzing request in seconds (default: 30)')
     parser.add_argument('--fuzz-no-timeout', action='store_true', help='Disable timeout for ffuf (useful for large wordlists)')
     
-    # Gather specific arguments
+    # Discovery specific arguments
     parser.add_argument('--gather-mode', choices=['g', 'w', 'k', 'gw', 'gk', 'wk', 'gwk'], default='gwk',
-                       help='Gather mode: g=gau, w=wayback, k=katana, gw=gau+wayback, gk=gau+katana, wk=wayback+katana, gwk=all (default: gwk)')
+                       help='Discovery mode: g=gau, w=wayback, k=katana, gw=gau+wayback, gk=gau+katana, wk=wayback+katana, gwk=all (default: gwk)')
     
-    # GitHub reconnaissance specific arguments
+    # Reconnaissance (GitHub) specific arguments
     parser.add_argument('--github-token', help='GitHub API token for higher rate limits')
     parser.add_argument('--github-max-repos', type=int, default=10, help='Maximum number of repositories to analyze per target (default: 10)')
     parser.add_argument('--github-scan-tools', choices=['trufflehog', 'gitleaks', 'custom', 'all'], default='all', 
@@ -97,8 +97,8 @@ def main():
         print("Use -h or --help for more information")
         return
     
-    # Validate fuzzing arguments
-    if 'fuzz' in args.commands:
+    # Validate enumeration (fuzzing) arguments
+    if 'enumeration' in args.commands:
         if args.fuzz_mode in ['wordlist', 'both'] and not args.fuzz_wordlist:
             print("Error: --fuzz-wordlist is required when using fuzz-mode wordlist or both")
             print("Use -h or --help for more information")
@@ -123,25 +123,25 @@ def main():
         check_tools(logger)
 
     for command in args.commands:
-        if command == 'gather':
-            gather_run(args, CONFIG, logger)
-        elif command == 'verify':
-            verify_run(args, CONFIG, logger)
-        elif command == 'deduplicate':
-            deduplicate_run(args, CONFIG, logger)
+        if command == 'discovery':
+            crawl_urls(args, CONFIG, logger)
+        elif command == 'validation':
+            validate_urls(args, CONFIG, logger)
+        elif command == 'processing':
+            remove_duplicates(args, CONFIG, logger)
         elif command == 'download':
             import asyncio
-            asyncio.run(download_run(args, CONFIG, logger))
-        elif command == 'analyze':
-            analyze_run(args, CONFIG, logger)
-        elif command == 'fuzz':
-            fuzzing_run(args, CONFIG, logger)
-        elif command == 'report':
-            report_run(args, CONFIG, logger)
-        elif command == 'github':
-            github_run(args, CONFIG, logger)
-        elif command == 'passive-data':
-            passive_data_run(args, CONFIG, logger)
+            asyncio.run(acquire_files(args, CONFIG, logger))
+        elif command == 'analysis':
+            analyze_files(args, CONFIG, logger)
+        elif command == 'enumeration':
+            enumerate_files(args, CONFIG, logger)
+        elif command == 'reporting':
+            generate_report(args, CONFIG, logger)
+        elif command == 'reconnaissance':
+            scan_github(args, CONFIG, logger)
+        elif command == 'passive-param':
+            passive_param_run(args, CONFIG, logger)
         elif command == 'fallparam':
             fallparam_run(args, CONFIG, logger)
 

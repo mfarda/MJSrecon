@@ -443,6 +443,8 @@ def run_ffuf_command(target, fuzz_url, wordlist, output_file, fuzz_type, args, l
     cmd = [
         "ffuf",
         "-u", fuzz_url,
+        "-r", # redirection enabled
+        "-or", # no output if no results
         "-w", wordlist,
         "-mc", args.fuzz_status_codes,
         "-t", str(args.fuzz_threads),
