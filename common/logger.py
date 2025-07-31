@@ -1,61 +1,83 @@
 import logging
-import os
-import sys
 from pathlib import Path
-from .config import ensure_dir
 
+# Using a class for colors is a good practice for organization.
 class Colors:
     RED = '\033[0;31m'
     GREEN = '\033[0;32m'
     YELLOW = '\033[1;33m'
     BLUE = '\033[0;34m'
-    NC = '\033[0m'
+    CYAN = '\033[0;36m'
+    NC = '\033[0m' # No Color
 
 class Logger:
-    def __init__(self, log_file: str, verbose: bool = False, quiet: bool = False):
-        ensure_dir(str(log_file.parent))
+    """
+    A centralized logger for the application, handling both console and file logging.
+    """
+    def __init__(self, log_dir: Path, verbose: bool = False, quiet: bool = False):
+        log_dir.mkdir(parents=True, exist_ok=True)
+        log_file = log_dir / "mjsrecon.log"
         
-        # Set log level based on verbosity
+        # Determine the logging level for both console and file.
         if quiet:
-            log_level = logging.WARNING
+            self.console_level = logging.WARNING
+            self.file_level = logging.INFO # Still log info to file
         elif verbose:
-            log_level = logging.DEBUG
+            self.console_level = logging.DEBUG
+            self.file_level = logging.DEBUG
         else:
-            log_level = logging.INFO
-        
+            self.console_level = logging.INFO
+            self.file_level = logging.INFO
+
+        # Configure the root logger for file output
         logging.basicConfig(
-            level=log_level,
-            format='%(asctime)s - %(levelname)s - %(message)s',
-            handlers=[logging.FileHandler(str(log_file))]
+            level=self.file_level,
+            format='%(asctime)s [%(levelname)-8s] %(message)s',
+            datefmt='%Y-%m-%d %H:%M:%S',
+            filename=log_file,
+            filemode='w'
         )
-        self.logger = logging.getLogger(__name__)
-        self.verbose = verbose
+        
+        # Get a logger instance
+        self.logger = logging.getLogger("MJSRecon")
         self.quiet = quiet
 
-    def log(self, level: str, message: str):
-        level = level.upper()
-        
-        # Skip debug messages if not verbose
-        if level == 'DEBUG' and not self.verbose:
-            return
-            
-        # Skip info messages if quiet mode
-        if level == 'INFO' and self.quiet:
-            return
-        
-        color_map = {
-            'INFO': Colors.BLUE,
-            'WARN': Colors.YELLOW,
-            'ERROR': Colors.RED,
+        # Color mapping for console output
+        self.color_map = {
+            'DEBUG': Colors.NC,
+            'INFO': Colors.CYAN,
             'SUCCESS': Colors.GREEN,
-            'DEBUG': Colors.NC
+            'WARNING': Colors.YELLOW,
+            'ERROR': Colors.RED,
         }
-        color = color_map.get(level, Colors.NC)
+
+    def _log_to_console(self, level: str, message: str):
+        """Prints formatted and colored messages to the console."""
+        log_level_numeric = logging.getLevelName(level)
+        # Fix: Map custom levels to INFO
+        if isinstance(log_level_numeric, str):
+            log_level_numeric = logging.INFO
+        if log_level_numeric >= self.console_level:
+            color = self.color_map.get(level, Colors.NC)
+            print(f"[{color}{level: <8}{Colors.NC}] {message}")
+
+    def debug(self, message: str):
+        self.logger.debug(message)
+        self._log_to_console('DEBUG', message)
+
+    def info(self, message: str):
+        self.logger.info(message)
+        self._log_to_console('INFO', message)
         
-        # Only print to console if not quiet or if it's an error/warning
-        if not self.quiet or level in ['ERROR', 'WARN']:
-            print(f"[{color}{level}{Colors.NC}] {message}")
-        
-        # Always log to file
-        log_method = getattr(self.logger, level.lower(), self.logger.info)
-        log_method(message)
+    def success(self, message: str):
+        # 'SUCCESS' is a custom level. We log it as INFO to the file.
+        self.logger.info(f"SUCCESS: {message}")
+        self._log_to_console('SUCCESS', message)
+
+    def warning(self, message: str):
+        self.logger.warning(message)
+        self._log_to_console('WARNING', message)
+
+    def error(self, message: str):
+        self.logger.error(message)
+        self._log_to_console('ERROR', message)

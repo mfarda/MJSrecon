@@ -1,147 +1,69 @@
 import asyncio
 import aiohttp
-from pathlib import Path
-from tqdm import tqdm
-from ..common.config import CONFIG, ensure_dir
-import re
 import hashlib
+from pathlib import Path
+from typing import List, Dict, Any
+from tqdm.asyncio import tqdm
 
-# Optional: Import deduplication module for pre-download hash checking
-# from .deduplication import calculate_file_hash_before_download
+from common.logger import Logger
+from common.utils import ensure_dir
 
-def sanitize_filename(url):
-    filename = re.sub(r'^https?://', '', url)
-    filename = re.sub(r'[\\/*?:"<>|]', '_', filename)
-    filename = filename.replace('/', '_')
-    if not filename.endswith('.js'):
-        filename += '.js'
-    return filename
+def run(args: Any, config: Dict, logger: Logger, workflow_data: Dict) -> Dict:
+    """
+    Asynchronously downloads JavaScript files from a list of URLs.
+    """
+    target = workflow_data['target']
+    urls_to_download = workflow_data.get('deduplicated_urls', workflow_data.get('live_urls', []))
+    
+    
+    if not urls_to_download:
+        logger.warning(f"[{target}] No URLs to download. Skipping.")
+        return {"downloaded_files": []}
 
-# The main entry point for this module is 'run', already defined.
+    target_output_dir = workflow_data['target_output_dir']
+    dl_files_dir = target_output_dir / config['dirs']['downloaded_files']
+    ensure_dir(dl_files_dir)
 
-async def run_independent(args, config, logger):
-    """Run download module independently with custom input file"""
-    input_file = Path(args.input)
-    if not input_file.exists():
-        logger.log('ERROR', f"Input file not found: {input_file}")
-        return False
+    logger.info(f"[{target}] Downloading {len(urls_to_download)} unique  files to {dl_files_dir}...")
     
-    # Determine output directory
-    if args.output:
-        output_dir = Path(args.output)
-        ensure_dir(output_dir)
-    else:
-        # Use same directory as input file
-        output_dir = input_file.parent / "downloaded_js"
-        ensure_dir(output_dir)
-    
-    logger.log('INFO', f"Downloading JS files from: {input_file}")
-    logger.log('INFO', f"Files will be saved to: {output_dir}")
-    
-    # Read URLs from input file
-    with open(input_file, 'r') as f:
-        urls = [line.strip().split()[0] for line in f if line.strip()]
-    
-    if not urls:
-        logger.log('WARN', "No URLs found to download")
-        return False
-    
-    logger.log('INFO', f"Found {len(urls)} JS URLs to download")
-    
-    hash_set = set()
-    hash_lock = asyncio.Lock()
-    semaphore = asyncio.Semaphore(CONFIG['max_concurrent_downloads'])
-    downloaded_count = 0
-    skipped_count = 0
-    failed_count = 0
+    downloaded_files = asyncio.run(
+        download_all_files(urls_to_download, dl_files_dir, config, logger)
+    )
 
-    async def download_file(session, url, pbar):
-        nonlocal downloaded_count, skipped_count, failed_count
-        retries = 3
-        async with semaphore:
-            for attempt in range(retries):
-                try:
-                    async with session.get(url, timeout=aiohttp.ClientTimeout(total=CONFIG['timeouts']['download'])) as response:
-                        if response.status == 200:
-                            content = await response.read()
-                            file_hash = hashlib.sha256(content).hexdigest()
-                            
-                            async with hash_lock:
-                                if file_hash in hash_set:
-                                    skipped_count += 1
-                                    pbar.set_postfix({
-                                        'Downloaded': downloaded_count,
-                                        'Skipped': skipped_count,
-                                        'Failed': failed_count
-                                    })
-                                    return False
-                                hash_set.add(file_hash)
-                            
-                            base_filename = sanitize_filename(url)
-                            filename = f"{base_filename}__{file_hash}.js"
-                            file_path = output_dir / filename
-                            if file_path.exists():
-                                skipped_count += 1
-                                pbar.set_postfix({
-                                    'Downloaded': downloaded_count,
-                                    'Skipped': skipped_count,
-                                    'Failed': failed_count
-                                })
-                                return False
-                            
-                            with open(file_path, 'wb') as f:
-                                f.write(content)
-                            
-                            downloaded_count += 1
-                            pbar.set_postfix({
-                                'Downloaded': downloaded_count,
-                                'Skipped': skipped_count,
-                                'Failed': failed_count
-                            })
-                            return True
-                        else:
-                            failed_count += 1
-                            pbar.set_postfix({
-                                'Downloaded': downloaded_count,
-                                'Skipped': skipped_count,
-                                'Failed': failed_count
-                            })
-                            return False
-                except Exception as e:
-                    if attempt < retries - 1:
-                        await asyncio.sleep(2)
-                    else:
-                        failed_count += 1
-                        pbar.set_postfix({
-                            'Downloaded': downloaded_count,
-                            'Skipped': skipped_count,
-                            'Failed': failed_count
-                        })
-                        return False
-
-    async with aiohttp.ClientSession() as session:
-        with tqdm(total=len(urls), desc="Downloading JS files", unit="file") as pbar:
-            tasks = [download_file(session, url, pbar) for url in urls]
-            await asyncio.gather(*tasks)
-            pbar.update(len(urls))  # Ensure progress bar completes
+    logger.success(f"[{target}] Download complete. Successfully downloaded {len(downloaded_files)} files.")
     
-    logger.log('SUCCESS', f"Download complete: {downloaded_count} downloaded, {skipped_count} skipped, {failed_count} failed")
-    logger.log('INFO', f"Files saved to: {output_dir}")
-    
-    return downloaded_count > 0
+    return {"downloaded_files": downloaded_files}
 
-def run(args, config, logger):
-    # Handle independent mode
-    if getattr(args, "independent", False):
-        return asyncio.run(run_independent(args, config, logger))
-    # Chain mode: download for all targets
-    for target in args.targets:
-        target_dir = Path(args.output) / target
-        ensure_dir(target_dir)
-        # Use the output of the previous step as input
-        input_file = args.input if args.input else (target_dir / config['files']['live_js'])
-        # Set output directory for downloads
-        download_args = args
-        download_args.input = str(input_file)
-        download_args.output = str(target_dir)
-        asyncio.run(run_independent(download_args, config, logger))
+async def download_all_files(urls: List[str], dl_files_dir: Path, config: Dict, logger: Logger) -> List[Path]:
+    """Manages the asynchronous download of all URLs."""
+    timeout = aiohttp.ClientTimeout(total=config['timeouts']['download'])
+    connector = aiohttp.TCPConnector(limit=config['download']['max_concurrent'])
+    
+    async with aiohttp.ClientSession(connector=connector, timeout=timeout) as session:
+        tasks = [download_one_file(session, url, dl_files_dir, logger) for url in urls]
+        results = await tqdm.gather(*tasks, desc=f"[{'Downloading':<12}]", unit="file", leave=False)
+        downloaded_files = [path for path in results if path is not None]
+
+    return downloaded_files
+
+async def download_one_file(session: aiohttp.ClientSession, url: str, dl_files_dir: Path, logger: Logger) -> Path | None:
+    """Coroutine to download a single file."""
+    try:
+        async with session.get(url) as response:
+            if response.status == 200:
+                content = await response.read()
+                
+                sanitized_name = "".join(c if c.isalnum() else '_' for c in url.split('/')[-1])
+                url_hash = hashlib.sha1(url.encode()).hexdigest()[:8]
+                filename = f"{sanitized_name[:50]}_{url_hash}.js"
+                file_path = dl_files_dir / filename
+                
+                with file_path.open('wb') as f:
+                    f.write(content)
+                return file_path
+            else:
+                logger.debug(f"Failed to download {url}: Status {response.status}")
+                return None
+    except Exception as e:
+        logger.debug(f"Exception downloading {url}: {e}")
+        return None

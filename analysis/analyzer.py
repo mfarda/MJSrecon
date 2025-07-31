@@ -1,241 +1,70 @@
-import concurrent.futures
-import subprocess
 import json
 from pathlib import Path
+import concurrent.futures
+from typing import Dict, Any, List
 from tqdm import tqdm
-from ..common.config import CONFIG, ensure_dir
+from common.logger import Logger
+from common.utils import run_command, ensure_dir
+from common.finder import find_urls_with_extension
 
-# The main entry point for this module is 'run', already defined.
+def run(args: Any, config: Dict, logger: Logger, workflow_data: Dict) -> Dict:
+    """
+    Analyzes JavaScript files using various tools.
+    """
+    target = workflow_data['target']
+    all_urls = workflow_data.get('all_urls', set())
+    js_urls = find_urls_with_extension(all_urls, '.js')
+    if not js_urls:
+        logger.warning(f"[{target}] No JS files to analyze. Skipping.")
+        return {"analysis_summary": {}}
 
-def run_independent(args, config, logger):
-    """Run analyze module independently with custom input directory"""
-    # Determine input directory
-    if args.input:
-        input_dir = Path(args.input)
-    else:
-        logger.log('ERROR', "Input directory is required for independent analysis")
-        return False
-    
-    if not input_dir.exists():
-        logger.log('ERROR', f"Input directory not found: {input_dir}")
-        return False
-    
-    # Find JS files in input directory
-    js_files = list(input_dir.glob("*.js"))
-    if not js_files:
-        logger.log('ERROR', f"No JS files found in: {input_dir}")
-        return False
-    
-    # Determine output directory
-    if args.output:
-        output_dir = Path(args.output)
-        ensure_dir(output_dir)
-    else:
-        # Use same directory as input
-        output_dir = input_dir.parent / "analysis_results"
-        ensure_dir(output_dir)
-    
-    logger.log('INFO', f"Analyzing JS files from: {input_dir}")
-    logger.log('INFO', f"Results will be saved to: {output_dir}")
-    logger.log('INFO', f"Found {len(js_files)} JS files to analyze")
-    
-    # Create results subdirectories
-    for subdir in CONFIG['results_dirs']:
-        ensure_dir(output_dir / subdir)
-    
-    max_workers = CONFIG['analysis_threads']
-    processed_count = 0
-    failed_count = 0
-    
-    def analyze_file(js_file, pbar):
-        nonlocal processed_count, failed_count
+    target_output_dir = workflow_data['target_output_dir']
+    results_dir = target_output_dir / config['dirs']['results']
+    ensure_dir(results_dir)
+
+    logger.info(f"[{target}] Analyzing {len(js_urls)} JS files...")
+
+    max_workers = config['analysis']['max_workers']
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = [executor.submit(analyze_single_file, Path(js_url), results_dir, config, logger) for js_url in js_urls]
+
+    for future in tqdm(concurrent.futures.as_completed(futures), total=len(js_urls), desc=f"[{target}] Analyzing files", unit="file", leave=False):
+        future.result()
+
+    logger.success(f"[{target}] Analysis complete. Results are in {results_dir}")
+
+    return {"analysis_summary": {"status": "Completed"}}
+
+def analyze_single_file(js_file: Path, results_dir: Path, config: Dict, logger: Logger):
+    """
+    Runs all analysis tools on a single JavaScript file.
+    """
+    tools = {
+    "jsluice_secrets": ["jsluice", "secrets", str(js_file)],
+    "jsluice_urls": ["jsluice", "urls", str(js_file)],
+    "secretfinder": ["python3", str(config['tools']['python_tools']['secretfinder']), "-i", str(js_file), "-o", "cli"],
+    "linkfinder": ["python3", str(config['tools']['python_tools']['linkfinder']), "-i", str(js_file), "-o", "cli"],
+    "trufflehog": ["trufflehog", "filesystem", str(js_file), "--json"]}
+    for tool_name, cmd in tools.items():
         try:
-            analyze_js_file_independent_optimized(input_dir, output_dir, js_file, logger)
-            processed_count += 1
-            pbar.set_postfix({
-                'Processed': processed_count,
-                'Failed': failed_count
-            })
-            return True
+            exit_code, stdout, stderr = run_command(cmd, timeout=config['timeouts']['analysis'])
+            if exit_code == 0 and stdout:
+                if "secretfinder" in tool_name or "linkfinder" in tool_name:
+                    sub_dir_name = tool_name.split('_')[0]
+                    ext = ".txt"
+                elif "trufflehog" in tool_name:
+                    sub_dir_name = "trufflehog"
+                    ext = ".json"
+                else:
+                    sub_dir_name = "jsluice"
+                    ext = ".json"
+
+                output_dir = results_dir / sub_dir_name
+                ensure_dir(output_dir)
+                output_file = output_dir / f"{js_file.stem}_{tool_name}{ext}"
+                output_file.write_text(stdout)
+            elif exit_code != 0:
+               logger.debug(f"Tool '{tool_name}' failed on {js_file.name} (Exit: {exit_code}). Stderr: {stderr}")
+
         except Exception as e:
-            failed_count += 1
-            pbar.set_postfix({
-                'Processed': processed_count,
-                'Failed': failed_count
-            })
-            return False
-    
-    with tqdm(total=len(js_files), desc="Analyzing JS files", unit="file") as pbar:
-        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-            futures = [executor.submit(analyze_file, js_file, pbar) for js_file in js_files]
-            for future in concurrent.futures.as_completed(futures):
-                future.result()
-                pbar.update(1)
-    
-    logger.log('SUCCESS', f"Analysis complete: {processed_count} processed, {failed_count} failed")
-    logger.log('INFO', f"Results saved to: {output_dir}")
-    return True
-
-def analyze_js_file_optimized(target, target_dir, js_file, logger):
-    """Optimized analysis with parallel tool execution"""
-    results_dir = target_dir / CONFIG['dirs']['results']
-    
-    # Create directories
-    jsluice_dir = results_dir / CONFIG['dirs']['jsluice']
-    secretfinder_dir = results_dir / CONFIG['dirs']['secretfinder']
-    linkfinder_dir = results_dir / CONFIG['dirs']['linkfinder']
-    trufflehog_dir = results_dir / CONFIG['dirs']['trufflehog']
-    
-    ensure_dir(jsluice_dir)
-    ensure_dir(secretfinder_dir)
-    ensure_dir(linkfinder_dir)
-    ensure_dir(trufflehog_dir)
-    
-    # Define analysis tasks
-    def run_jsluice_urls():
-        exit_code, stdout, stderr = _run_command(["jsluice", "urls", str(js_file)], CONFIG['timeouts']['analysis'])
-        if exit_code == 0 and stdout.strip():
-            try:
-                urls_data = [json.loads(line) for line in stdout.splitlines() if line.strip()]
-                with open(jsluice_dir / f"urls_{js_file.name}.json", 'w') as f:
-                    json.dump(urls_data, f, indent=2)
-            except json.JSONDecodeError:
-                pass
-    
-    def run_jsluice_secrets():
-        exit_code, stdout, stderr = _run_command(["jsluice", "secrets", str(js_file)], CONFIG['timeouts']['analysis'])
-        if exit_code == 0 and stdout.strip():
-            try:
-                secrets_data = json.loads(stdout)
-                with open(jsluice_dir / f"secrets_{js_file.name}.json", 'w') as f:
-                    json.dump(secrets_data, f, indent=2)
-            except json.JSONDecodeError:
-                pass
-    
-    def run_secretfinder():
-        exit_code, stdout, stderr = _run_command([
-            "python3", CONFIG['tools']['python_tools']['secretfinder'], "-i", str(js_file), "-o", "cli"
-        ], CONFIG['timeouts']['analysis'])
-        if exit_code == 0:
-            with open(secretfinder_dir / f"secrets_{js_file.name}.txt", 'w') as f:
-                f.write(stdout)
-    
-    def run_linkfinder():
-        exit_code, stdout, stderr = _run_command([
-            "python3", CONFIG['tools']['python_tools']['linkfinder'], "-i", str(js_file), "-o", "cli"
-        ], CONFIG['timeouts']['analysis'])
-        if exit_code == 0:
-            with open(linkfinder_dir / f"endpoints_{js_file.name}.txt", 'w') as f:
-                f.write(stdout)
-    
-    def run_trufflehog():
-        exit_code, stdout, stderr = _run_command([
-            "trufflehog", "filesystem", str(js_file), "--json"
-        ], CONFIG['timeouts']['analysis'])
-        if exit_code == 0:
-            with open(trufflehog_dir / f"secrets_{js_file.name}.json", 'w') as f:
-                f.write(stdout)
-    
-    # Run all tools in parallel
-    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
-        futures = [
-            executor.submit(run_jsluice_urls),
-            executor.submit(run_jsluice_secrets),
-            executor.submit(run_secretfinder),
-            executor.submit(run_linkfinder),
-            executor.submit(run_trufflehog)
-        ]
-        concurrent.futures.wait(futures)
-
-def analyze_js_file_independent_optimized(input_dir, output_dir, js_file, logger):
-    """Optimized analysis for independent mode with parallel tool execution"""
-    # Create directories
-    jsluice_dir = output_dir / CONFIG['dirs']['jsluice']
-    secretfinder_dir = output_dir / CONFIG['dirs']['secretfinder']
-    linkfinder_dir = output_dir / CONFIG['dirs']['linkfinder']
-    trufflehog_dir = output_dir / CONFIG['dirs']['trufflehog']
-    
-    ensure_dir(jsluice_dir)
-    ensure_dir(secretfinder_dir)
-    ensure_dir(linkfinder_dir)
-    ensure_dir(trufflehog_dir)
-    
-    # Define analysis tasks
-    def run_jsluice_urls():
-        exit_code, stdout, stderr = _run_command(["jsluice", "urls", str(js_file)], CONFIG['timeouts']['analysis'])
-        if exit_code == 0 and stdout.strip():
-            try:
-                urls_data = [json.loads(line) for line in stdout.splitlines() if line.strip()]
-                with open(jsluice_dir / f"urls_{js_file.name}.json", 'w') as f:
-                    json.dump(urls_data, f, indent=2)
-            except json.JSONDecodeError:
-                pass
-    
-    def run_jsluice_secrets():
-        exit_code, stdout, stderr = _run_command(["jsluice", "secrets", str(js_file)], CONFIG['timeouts']['analysis'])
-        if exit_code == 0 and stdout.strip():
-            try:
-                secrets_data = json.loads(stdout)
-                with open(jsluice_dir / f"secrets_{js_file.name}.json", 'w') as f:
-                    json.dump(secrets_data, f, indent=2)
-            except json.JSONDecodeError:
-                pass
-    
-    def run_secretfinder():
-        exit_code, stdout, stderr = _run_command([
-            "python3", CONFIG['tools']['python_tools']['secretfinder'], "-i", str(js_file), "-o", "cli"
-        ], CONFIG['timeouts']['analysis'])
-        if exit_code == 0:
-            with open(secretfinder_dir / f"secrets_{js_file.name}.txt", 'w') as f:
-                f.write(stdout)
-    
-    def run_linkfinder():
-        exit_code, stdout, stderr = _run_command([
-            "python3", CONFIG['tools']['python_tools']['linkfinder'], "-i", str(js_file), "-o", "cli"
-        ], CONFIG['timeouts']['analysis'])
-        if exit_code == 0:
-            with open(linkfinder_dir / f"endpoints_{js_file.name}.txt", 'w') as f:
-                f.write(stdout)
-    
-    def run_trufflehog():
-        exit_code, stdout, stderr = _run_command([
-            "trufflehog", "filesystem", str(js_file), "--json"
-        ], CONFIG['timeouts']['analysis'])
-        if exit_code == 0:
-            with open(trufflehog_dir / f"secrets_{js_file.name}.json", 'w') as f:
-                f.write(stdout)
-    
-    # Run all tools in parallel
-    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
-        futures = [
-            executor.submit(run_jsluice_urls),
-            executor.submit(run_jsluice_secrets),
-            executor.submit(run_secretfinder),
-            executor.submit(run_linkfinder),
-            executor.submit(run_trufflehog)
-        ]
-        concurrent.futures.wait(futures)
-
-def _run_command(cmd, timeout=CONFIG['timeouts']['command']):
-    try:
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
-        return result.returncode, result.stdout, result.stderr
-    except subprocess.TimeoutExpired:
-        return 1, "", f"Command timed out after {timeout} seconds"
-    except Exception as e:
-        return 1, "", str(e)
-
-def run(args, config, logger):
-    # Handle independent mode
-    if getattr(args, "independent", False):
-        return run_independent(args, config, logger)
-    # Chain mode: analyze for all targets
-    for target in args.targets:
-        target_dir = Path(args.output) / target
-        ensure_dir(target_dir)
-        # Use the output of the previous step as input
-        input_dir = args.input if args.input else (target_dir / config['dirs']['js_files'])
-        analyze_args = args
-        analyze_args.input = str(input_dir)
-        analyze_args.output = str(target_dir)
-        run_independent(analyze_args, config, logger)
+               logger.error(f"Exception running '{tool_name}' on {js_file.name}: {e}")
