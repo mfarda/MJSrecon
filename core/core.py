@@ -18,7 +18,7 @@ from enumeration.enumerator import run as enumeration_run
 from reporting.reporter import run as reporting_run
 from reconnaissance.github_scanner import run as reconnaissance_run
 from passive_data.passive_data import run as passive_data_run
-from fallparam.fallparam import run as fallparam_run
+from fallparams.fallparams import run as fallparams_run
 
 def main():
     parser = argparse.ArgumentParser(description="MJSRecon: Modular JavaScript Reconnaissance Tool", add_help=False)
@@ -32,7 +32,7 @@ def main():
         'analysis': analysis_run,
         'enumeration': enumeration_run,
         'passive-data': passive_data_run,
-        'fallparam': fallparam_run,
+        'fallparams': fallparams_run,
         'reconnaissance': reconnaissance_run,
         'reporting': reporting_run,
     }

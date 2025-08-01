@@ -4,7 +4,7 @@ import hashlib
 from pathlib import Path
 from typing import List, Dict, Any
 from tqdm.asyncio import tqdm
-
+from common.finder import find_urls_with_extension
 from common.logger import Logger
 from common.utils import ensure_dir
 
@@ -13,8 +13,8 @@ def run(args: Any, config: Dict, logger: Logger, workflow_data: Dict) -> Dict:
     Asynchronously downloads JavaScript files from a list of URLs.
     """
     target = workflow_data['target']
-    urls_to_download = workflow_data.get('deduplicated_urls', workflow_data.get('live_urls', []))
-    
+    urls_dl = workflow_data.get('deduplicated_urls', workflow_data.get('live_urls', []))
+    urls_to_download = find_urls_with_extension(urls_dl, '.js')
     
     if not urls_to_download:
         logger.warning(f"[{target}] No URLs to download. Skipping.")
