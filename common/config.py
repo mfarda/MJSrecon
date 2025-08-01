@@ -173,7 +173,7 @@ CONFIG = {
         'results': 'results',
         'downloaded_files': 'downloaded_files',
         'ffuf_results': 'ffuf_results',
-        'param_passive': 'param_passive',  # Changed from param-passive
+        'param_passive': 'param_passive',  # Use underscore
         'fallparams_results': 'fallparams_results',
         'jsluice': 'jsluice',
         'secretfinder': 'secretfinder',
@@ -200,7 +200,7 @@ CONFIG = {
         'fuzz_threads': 40,
         'fuzz_timeout': 10,
     },
-    'param_passive': {  # Changed from passive_data
+    'param_passive': {  # Use underscore instead of param-passive
         'important_extensions': {'.php', '.asp', '.aspx', '.jsp', '.jspx', '.ashx', '.phpx', '.html', '.htm', '.ashx', },
         'max_workers': 20,
     },

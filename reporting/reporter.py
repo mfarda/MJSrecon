@@ -67,11 +67,11 @@ def generate_report_text(target: str, data: Dict, config: Dict) -> str:
         report.append(f"  • Total URLs Found : {summary.get('total_found', 'N/A')}")
         report.append(f"  • New URLs Found   : {summary.get('new_found', 'N/A')}\n")
 
-    if 'passive_data_summary' in data:
-        summary = data['passive_data_summary']
-        report.append("--- Passive Data Summary ---\n")
-        report.append(f"  • Important URLs Found   : {summary.get('important_urls_found', 'N/A')}")
-        report.append(f"  • Unique Parameters Found: {summary.get('unique_parameters_found', 'N/A')}\n")
+    if 'param_passive_summary' in data:
+        summary = data['param_passive_summary']
+        report.append("--- Parameter Extraction Summary ---\n")
+        report.append(f"  • Important files found: {summary.get('important_files', 0)}\n")
+        report.append(f"  • Unique parameters found: {summary.get('unique_parameters', 0)}\n\n")
 
     if 'fallparams_summary' in data:
         summary = data['fallparams_summary']
