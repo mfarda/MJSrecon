@@ -8,6 +8,11 @@ from tqdm import tqdm
 from common.logger import Logger
 from common.utils import run_command, ensure_dir
 
+"""
+FuzzingJS Module for MJSRecon
+Fuzzes directories for additional JavaScript files
+"""
+
 def run(args: Any, config: Dict, logger: Logger, workflow_data: Dict) -> Dict:
     """
     Performs directory and file fuzzing based on discovered JS file paths.

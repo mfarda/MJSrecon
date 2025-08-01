@@ -14,10 +14,10 @@ from validation.validator import run as validation_run
 from processing.deduplicator import run as processing_run
 from download.downloader import run as download_run
 from analysis.analyzer import run as analysis_run
-from enumeration.enumerator import run as enumeration_run
+from fuzzingjs.fuzzingjs import run as fuzzingjs_run
 from reporting.reporter import run as reporting_run
-from reconnaissance.github_scanner import run as reconnaissance_run
-from passive_data.passive_data import run as passive_data_run
+from github.github import run as github_run
+from param_passive.param_passive import run as param_passive_run
 from fallparams.fallparams import run as fallparams_run
 
 def main():
@@ -30,10 +30,10 @@ def main():
         'processing': processing_run,
         'download': download_run,
         'analysis': analysis_run,
-        'enumeration': enumeration_run,
-        'passive-data': passive_data_run,
+        'fuzzingjs': fuzzingjs_run,
+        'param-passive': param_passive_run,
         'fallparams': fallparams_run,
-        'reconnaissance': reconnaissance_run,
+        'github': github_run,
         'reporting': reporting_run,
     }
     
@@ -56,7 +56,7 @@ def main():
     parser.add_argument('--gather-mode', choices=['g', 'w', 'k', 'gw', 'gk', 'wk', 'gwk'], default='gwk', help='Tools to use for discovery: g=gau, w=wayback, k=katana.')
     parser.add_argument('-d', '--depth', type=int, default=2, help='Katana crawl depth.')
     
-    # Enumeration options
+    # Fuzzing options
     parser.add_argument('--fuzz-mode', choices=['wordlist', 'permutation', 'both', 'off'], default='off', help='Fuzzing mode.')
     parser.add_argument('--fuzz-wordlist', type=Path, help='Custom wordlist for fuzzing.')
     
@@ -156,3 +156,6 @@ def main():
             logger.error(f"Workflow for target {target} failed during '{command}' module: {e}")
             logger.error("Skipping to next target if any.")
             continue
+
+if __name__ == "__main__":
+    main()

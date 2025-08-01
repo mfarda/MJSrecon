@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-GitHub Reconnaissance Module for MJSRecon
-Searches for secrets, sensitive data, and useful information in GitHub repositories
+GitHub Module for MJSRecon
+Scans GitHub for secrets related to the target
 """
 
 import os
@@ -10,6 +10,8 @@ import time
 import subprocess
 import tempfile
 import shutil
+import hashlib
+import pickle
 from pathlib import Path
 from urllib.parse import urlparse, quote
 from typing import List, Dict, Set, Optional, Tuple, Any
@@ -18,7 +20,6 @@ from datetime import datetime, timedelta
 import requests
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import base64
-import hashlib
 
 from common.logger import Logger
 from common.utils import ensure_dir
@@ -28,6 +29,11 @@ class GitHubRecon:
         self.target = target
         self.output_dir = output_dir / "github"
         ensure_dir(self.output_dir)
+        
+        # Add cache directory initialization
+        self.cache_dir = self.output_dir / "cache"
+        ensure_dir(self.cache_dir)
+        
         self.logger = logger
         self.config = config
         
@@ -50,15 +56,7 @@ class GitHubRecon:
         self.users = []
         
         # Tools configuration from config
-        enabled_tools = github_config.get('enabled_tools', {
-            'trufflehog': True,
-            'trufflehog_github_org': True,
-            'gitleaks': True,
-            'custom_patterns': True,
-            'gitrob': False,
-            'repo-supervisor': False,
-            'git-secrets': False
-        })
+        enabled_tools = github_config.get('enabled_tools', {})
         
         self.tools = {}
         for tool_name, enabled in enabled_tools.items():
@@ -76,29 +74,20 @@ class GitHubRecon:
                 self.tools[tool_name] = False
                 self.logger.debug(f'[{self.target}] Tool {tool_name}: enabled={enabled}, available=False')
         
-        # Scanning configuration
+        # Scanning configuration from config
         self.max_repos_to_scan = github_config.get('max_repos_to_scan', 10)
         self.max_file_size_mb = github_config.get('max_file_size_mb', 10)
         self.clone_timeout = github_config.get('clone_timeout', 300)
         self.scan_timeout = github_config.get('scan_timeout', 600)
         
-        # Search configuration
+        # Search configuration from config
         self.search_per_page = github_config.get('search_per_page', 100)
         self.max_search_results = github_config.get('max_search_results', 1000)
         
         # Search queries from config
-        self.search_queries = github_config.get('search_queries', [
-            f'"{self.target}"',
-            f'org:{self.target}',
-            f'user:{self.target}',
-            f'{self.target}',
-            f'"{self.target}" language:javascript',
-            f'"{self.target}" language:python',
-            f'"{self.target}" language:go',
-            f'"{self.target}" language:java'
-        ])
+        self.search_queries = github_config.get('search_queries', [])
         
-        # Output configuration
+        # Output configuration from config
         self.save_repositories = github_config.get('save_repositories', True)
         self.save_secrets = github_config.get('save_secrets', True)
         self.save_useful_data = github_config.get('save_useful_data', True)
@@ -106,38 +95,14 @@ class GitHubRecon:
         self.save_users = github_config.get('save_users', True)
         self.generate_report = github_config.get('generate_report', True)
         
-        # Secret patterns
-        self.secret_patterns = {
-            'api_keys': [
-                r'[aA][pP][iI][-_]?[kK][eE][yY].*[\'"][0-9a-zA-Z]{32,45}[\'"]',
-                r'[aA][pP][iI][-_]?[tT][oO][kK][eE][nN].*[\'"][0-9a-zA-Z]{32,45}[\'"]',
-                r'[sS][eE][cC][rR][eE][tT].*[\'"][0-9a-zA-Z]{32,45}[\'"]',
-            ],
-            'aws_keys': [
-                r'AKIA[0-9A-Z]{16}',
-                r'aws_access_key_id.*[\'"][0-9A-Z]{20}[\'"]',
-                r'aws_secret_access_key.*[\'"][0-9A-Za-z/+=]{40}[\'"]',
-            ],
-            'google_keys': [
-                r'AIza[0-9A-Za-z\-_]{35}',
-                r'ya29\.[0-9A-Za-z\-_]+',
-            ],
-            'database_connections': [
-                r'mysql://[a-zA-Z0-9._-]+:[a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+:[0-9]+/[a-zA-Z0-9._-]+',
-                r'postgresql://[a-zA-Z0-9._-]+:[a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+:[0-9]+/[a-zA-Z0-9._-]+',
-                r'mongodb://[a-zA-Z0-9._-]+:[a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+:[0-9]+/[a-zA-Z0-9._-]+',
-            ],
-            'private_keys': [
-                r'-----BEGIN PRIVATE KEY-----',
-                r'-----BEGIN RSA PRIVATE KEY-----',
-                r'-----BEGIN DSA PRIVATE KEY-----',
-                r'-----BEGIN EC PRIVATE KEY-----',
-            ],
-            'passwords': [
-                r'[pP][aA][sS][sS][wW][oO][rR][dD].*[\'"][^\'"]{8,}[\'"]',
-                r'[pP][wW][dD].*[\'"][^\'"]{8,}[\'"]',
-            ]
-        }
+        # Secret patterns from config
+        self.secret_patterns = github_config.get('secret_patterns', {})
+        
+        # Performance configuration from config
+        self.max_concurrent_repos = github_config.get('max_concurrent_repos', 3)
+        self.max_concurrent_scans = github_config.get('max_concurrent_scans', 4)
+        self.cache_enabled = github_config.get('cache_enabled', True)
+        self.cache_ttl = github_config.get('cache_ttl', 3600)
 
     def _check_tool(self, tool_name: str) -> bool:
         """Check if a tool is available in PATH"""
@@ -148,8 +113,37 @@ class GitHubRecon:
         except (subprocess.TimeoutExpired, subprocess.CalledProcessError, FileNotFoundError):
             return False
 
+    def _get_cached_response(self, url: str) -> Optional[Dict]:
+        """Get cached API response if available and not expired"""
+        cache_file = self.cache_dir / f"{hashlib.md5(url.encode()).hexdigest()}.pkl"
+        
+        if cache_file.exists():
+            try:
+                with open(cache_file, 'rb') as f:
+                    cached_data = pickle.load(f)
+                    # Check if cache is less than 1 hour old
+                    if time.time() - cached_data['timestamp'] < 3600:
+                        return cached_data['data']
+            except Exception:
+                pass
+        return None
+    
+    def _cache_response(self, url: str, data: Dict):
+        """Cache API response"""
+        cache_file = self.cache_dir / f"{hashlib.md5(url.encode()).hexdigest()}.pkl"
+        try:
+            with open(cache_file, 'wb') as f:
+                pickle.dump({'data': data, 'timestamp': time.time()}, f)
+        except Exception:
+            pass
+
     def _make_github_request(self, url: str, headers: Dict = None) -> Dict:
-        """Make a GitHub API request with rate limiting"""
+        """Make a GitHub API request with caching"""
+        # Check cache first
+        cached_data = self._get_cached_response(url)
+        if cached_data:
+            return cached_data
+        
         if headers is None:
             headers = {}
         
@@ -175,7 +169,13 @@ class GitHubRecon:
                         return self._make_github_request(url, headers)
             
             response.raise_for_status()
-            return response.json()
+            json_data = response.json()
+            
+            # Cache successful responses
+            if response.status_code == 200:
+                self._cache_response(url, json_data)
+            
+            return json_data
             
         except requests.exceptions.RequestException as e:
             self.logger.error(f'GitHub API request failed: {e}')
@@ -302,7 +302,7 @@ class GitHubRecon:
             
             return org_data
         
-            return {}
+        return {}
 
     def get_user_info(self, username: str) -> Dict:
         """Get detailed information about a user"""
@@ -779,6 +779,80 @@ class GitHubRecon:
         except Exception as e:
             self.logger.error(f'[{self.target}] Error generating summary report: {e}')
 
+    def clone_and_analyze_repo(self, repo: Dict) -> Dict:
+        """Clone and analyze a single repository with all scanning tools"""
+        repo_name = repo['name']
+        clone_url = repo['clone_url']
+        
+        # Clone repository
+        repo_path = self.clone_repository(clone_url, repo_name)
+        if not repo_path:
+            return {'repo': repo_name, 'status': 'clone_failed'}
+        
+        results = {
+            'repo': repo_name,
+            'status': 'completed',
+            'secrets': [],
+            'content_analysis': {},
+            'commit_history': [],
+            'issues_and_prs': {'issues': [], 'pull_requests': []}
+        }
+        
+        # Run all scans concurrently
+        with ThreadPoolExecutor(max_workers=4) as executor:
+            # Submit all scanning tasks
+            future_trufflehog = executor.submit(self.scan_with_trufflehog, repo_path)
+            future_gitleaks = executor.submit(self.scan_with_gitleaks, repo_path)
+            future_custom = executor.submit(self.scan_with_custom_patterns, repo_path)
+            future_content = executor.submit(self.analyze_repository_content, repo_path)
+            future_commits = executor.submit(self.get_commit_history, repo_path)
+            future_issues = executor.submit(self.search_issues_and_prs, repo_name)
+            
+            # Collect results
+            try:
+                trufflehog_secrets = future_trufflehog.result(timeout=self.scan_timeout)
+                if trufflehog_secrets:
+                    results['secrets'].extend(trufflehog_secrets)
+            except Exception as e:
+                self.logger.error(f'[{self.target}] TruffleHog scan failed for {repo_name}: {e}')
+            
+            try:
+                gitleaks_secrets = future_gitleaks.result(timeout=self.scan_timeout)
+                if gitleaks_secrets:
+                    results['secrets'].extend(gitleaks_secrets)
+            except Exception as e:
+                self.logger.error(f'[{self.target}] GitLeaks scan failed for {repo_name}: {e}')
+            
+            try:
+                custom_secrets = future_custom.result(timeout=self.scan_timeout)
+                if custom_secrets:
+                    results['secrets'].extend(custom_secrets)
+            except Exception as e:
+                self.logger.error(f'[{self.target}] Custom scan failed for {repo_name}: {e}')
+            
+            try:
+                results['content_analysis'] = future_content.result(timeout=60)
+            except Exception as e:
+                self.logger.error(f'[{self.target}] Content analysis failed for {repo_name}: {e}')
+            
+            try:
+                results['commit_history'] = future_commits.result(timeout=60)
+            except Exception as e:
+                self.logger.error(f'[{self.target}] Commit history failed for {repo_name}: {e}')
+            
+            try:
+                results['issues_and_prs'] = future_issues.result(timeout=60)
+            except Exception as e:
+                self.logger.error(f'[{self.target}] Issues/PRs failed for {repo_name}: {e}')
+        
+        # Clean up cloned repository
+        try:
+            shutil.rmtree(repo_path)
+        except Exception as e:
+            self.logger.warning(f'[{self.target}] Could not clean up {repo_path}: {e}')
+        
+        return results
+
     def run_recon(self) -> Dict:
         """Main execution method for GitHub reconnaissance."""
         self.logger.info(f'[{self.target}] Starting comprehensive GitHub reconnaissance')
@@ -791,7 +865,6 @@ class GitHubRecon:
         
         # Get organization info if it looks like an org
         if '/' not in self.target and len(self.target) > 0:
-            # Extract organization name from domain (remove TLD)
             org_name = self.target.split('.')[0] if '.' in self.target else self.target
             org_info = self.get_organization_info(org_name)
             if org_info:
@@ -799,79 +872,57 @@ class GitHubRecon:
         
         # Get user info if it looks like a user
         if '/' not in self.target and len(self.target) > 0:
-            # Extract username from domain (remove TLD)
             username = self.target.split('.')[0] if '.' in self.target else self.target
             user_info = self.get_user_info(username)
             if user_info:
                 self.users.append(user_info)
         
         # Scan GitHub organization directly with TruffleHog (if enabled)
-        self.logger.debug(f'[{self.target}] DEBUG: Checking trufflehog_github_org - tools: {self.tools}, trufflehog_github_org: {self.tools.get("trufflehog_github_org")}')
         if self.tools.get('trufflehog_github_org', False):
             self.logger.info(f'[{self.target}] Starting TruffleHog GitHub org scan...')
             github_org_secrets = self.scan_with_trufflehog_github_org(self.target)
             if github_org_secrets is None:
                 github_org_secrets = []
             self.secrets_found.extend(github_org_secrets)
-        else:
-            self.logger.debug(f'[{self.target}] TruffleHog GitHub org scan is disabled or not available')
         
-        # Clone and analyze repositories (limit to configured max to avoid rate limits)
+        # Clone and analyze repositories with threading
         top_repos = sorted(repositories, key=lambda x: x.get('stars', 0), reverse=True)[:self.max_repos_to_scan]
-
-        for repo in top_repos:
-            repo_name = repo['name']
-            clone_url = repo['clone_url']
+        
+        if top_repos:
+            self.logger.info(f'[{self.target}] Analyzing {len(top_repos)} repositories with threading...')
             
-            # Clone repository
-            repo_path = self.clone_repository(clone_url, repo_name)
-            if not repo_path:
-                continue
-            
-            # Scan for secrets
-            trufflehog_secrets = self.scan_with_trufflehog(repo_path)
-            if trufflehog_secrets is None:
-                trufflehog_secrets = []
-            gitleaks_secrets = self.scan_with_gitleaks(repo_path)
-            if gitleaks_secrets is None:
-                gitleaks_secrets = []
-            custom_secrets = self.scan_with_custom_patterns(repo_path)
-            if custom_secrets is None:
-                custom_secrets = []
-            
-            self.secrets_found.extend(trufflehog_secrets)
-            self.secrets_found.extend(gitleaks_secrets)
-            self.secrets_found.extend(custom_secrets)
-            
-            # Analyze repository content
-            content_analysis = self.analyze_repository_content(repo_path)
-            if content_analysis is None:
-                content_analysis = {}
-            
-            # Get commit history
-            commit_history = self.get_commit_history(repo_path)
-            if commit_history is None:
-                commit_history = []
-            
-            # Search issues and PRs
-            issues_prs = self.search_issues_and_prs(repo_name)
-            if issues_prs is None:
-                issues_prs = {'issues': [], 'pull_requests': []}
-            
-            # Store useful data
-            useful_data = {
-                'repository': repo_name,
-                'content_analysis': content_analysis,
-                'commit_history': commit_history,
-                'issues_and_prs': issues_prs
-            }
-            self.useful_data.append(useful_data)
-            
-            # Clean up cloned repository to save space
-            try:
-                shutil.rmtree(repo_path)
-            except Exception as e:
-                self.logger.warning(f'[{self.target}] Could not clean up {repo_path}: {e}')
+            # Use ThreadPoolExecutor for concurrent repository processing
+            max_workers = min(3, len(top_repos))  # Limit concurrent repos to avoid rate limits
+            with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                # Submit all repository analysis tasks
+                future_to_repo = {
+                    executor.submit(self.clone_and_analyze_repo, repo): repo['name']
+                    for repo in top_repos
+                }
+                
+                # Process results as they complete
+                for future in as_completed(future_to_repo):
+                    repo_name = future_to_repo[future]
+                    try:
+                        result = future.result()
+                        
+                        # Add secrets to global list
+                        if result['secrets']:
+                            self.secrets_found.extend(result['secrets'])
+                        
+                        # Add useful data
+                        useful_data = {
+                            'repository': result['repo'],
+                            'content_analysis': result['content_analysis'],
+                            'commit_history': result['commit_history'],
+                            'issues_and_prs': result['issues_and_prs']
+                        }
+                        self.useful_data.append(useful_data)
+                        
+                        self.logger.success(f'[{self.target}] Completed analysis of {repo_name}')
+                        
+                    except Exception as e:
+                        self.logger.error(f'[{self.target}] Analysis failed for {repo_name}: {e}')
         
         # Save all results
         self.save_results()

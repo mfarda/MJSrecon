@@ -22,10 +22,10 @@ def run(args: Any, config: Dict, logger: Logger, workflow_data: Dict) -> Dict:
     logger.info(f"[{target}] Starting passive data extraction from {len(all_urls)} URLs.")
     
     target_output_dir = workflow_data['target_output_dir']
-    passive_data_dir = target_output_dir / config['dirs']['passive_data']
+    passive_data_dir = target_output_dir / config['dirs']['param-passive']
     ensure_dir(passive_data_dir)
 
-    important_extensions = config['passive_data']['important_extensions']
+    important_extensions = config['param-passive']['important_extensions']
     important_urls = set()
     for ext in important_extensions:
         important_urls.update(find_urls_with_extension(all_urls, ext))
