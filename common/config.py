@@ -191,7 +191,7 @@ CONFIG = {
         'max_concurrent': 20,
     },
     'validation': {
-        'max_workers': 50,
+        'max_workers': 10,  # Reduced from 50 to prevent high CPU usage
     },
     'analysis': {
         'max_workers': 5, # Analysis is CPU-bound, fewer workers are better

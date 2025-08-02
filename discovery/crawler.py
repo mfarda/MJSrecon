@@ -108,7 +108,18 @@ def run(args: Any, config: Dict, logger: Logger, workflow_data: Dict) -> Dict:
     # Save combined results
     total_found = len(all_urls)
     if total_found > 0:
+        # Save to file instead of keeping in memory for large datasets
         write_lines_to_file("all_urls.txt", all_urls)
+        
+        # For very large datasets, return a smaller sample for immediate processing
+        if total_found > 100000:  # If more than 100k URLs
+            logger.warning(f"Large dataset detected ({total_found} URLs). Returning sample for immediate processing.")
+            # Return a sample of 50k URLs for immediate processing
+            sample_size = min(50000, total_found)
+            sample_urls = set(list(all_urls)[:sample_size])
+            logger.info(f"Returning sample of {len(sample_urls)} URLs for immediate processing.")
+            all_urls = sample_urls
+        
         logger.success(f"Discovery complete. Found a total of {total_found} unique URLs for '{target}'.")
         
         # Log breakdown by tool if multiple tools were used
