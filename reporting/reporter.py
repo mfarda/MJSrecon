@@ -13,7 +13,7 @@ def run(args: Any, config: Dict, logger: Logger, workflow_data: Dict) -> Dict:
     """
     target = workflow_data['target']
     output_dir = workflow_data['target_output_dir']
-        ensure_dir(output_dir)
+    ensure_dir(output_dir)
 
     logger.info(f"[{target}] Generating final report...")
 
