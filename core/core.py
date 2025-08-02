@@ -43,7 +43,7 @@ def main():
         'reporting': reporting_run,
     }
     
-    parser.add_argument('commands', nargs='*', choices=COMMAND_MAP.keys(), help='Commands to run in sequence.')
+    parser.add_argument('commands', nargs='*', help='Commands to run in sequence.')
     
     # Core arguments
     parser.add_argument('-t', '--target', help='A single target domain (e.g., example.com). For multiple targets, use --targets-file.')
@@ -90,6 +90,14 @@ def main():
     
     # Setup logger with timestamp format
     logger = Logger(log_dir=args.output, verbose=args.verbose, quiet=args.quiet, timestamp_format=args.timestamp_format)
+    
+    # Validate commands after parsing
+    if args.commands:
+        invalid_commands = [cmd for cmd in args.commands if cmd not in COMMAND_MAP]
+        if invalid_commands:
+            logger.error(f"Invalid commands: {', '.join(invalid_commands)}")
+            logger.error(f"Valid commands: {', '.join(COMMAND_MAP.keys())}")
+            return
     
     # Configure proxy settings
     if args.proxy:

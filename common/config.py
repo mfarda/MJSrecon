@@ -110,13 +110,13 @@ CONFIG = {
             # 'org:"{target}" "service_account" pushed:>2024-01-01',
             # 'org:"{target}" "private_key" pushed:>2024-01-01',
             
-            # Reduce noise with -fork
-            'org:"{target}" "aws_access_key_id" -fork',
-            'org:"{target}" "slack_token" -fork',
-            'org:"{target}" "DATABASE_URL" -fork',
-            'org:"{target}" "client_secret" -fork',
-            'org:"{target}" "service_account" -fork',
-            'org:"{target}" "private_key" -fork'
+            # # Reduce noise with -fork
+            # 'org:"{target}" "aws_access_key_id" -fork',
+            # 'org:"{target}" "slack_token" -fork',
+            # 'org:"{target}" "DATABASE_URL" -fork',
+            # 'org:"{target}" "client_secret" -fork',
+            # 'org:"{target}" "service_account" -fork',
+            # 'org:"{target}" "private_key" -fork'
         ],
         
         # Secret Patterns for Custom Scanning
