@@ -58,6 +58,11 @@ def show_help():
         '-v, --verbose': 'Enable verbose (DEBUG level) logging.',
         '-q, --quiet': 'Suppress console output except for warnings/errors.',
         '--timestamp-format': 'Timestamp format for console output (default: %H:%M:%S).',
+        '--proxy': 'Proxy URL (e.g., socks5://127.0.0.1:1080, http://proxy:8080).',
+        '--proxy-auth': 'Proxy authentication (username:password).',
+        '--no-proxy': 'Comma-separated list of hosts to bypass proxy.',
+        '--proxy-timeout': 'Proxy connection timeout in seconds (default: 30).',
+        '--proxy-verify-ssl': 'Verify SSL certificates when using proxy.',
         '--independent': 'Run a single command independently (requires --input).',
         '--input': 'Input file for a module in independent mode.',
         '--help-command <cmd>': 'Show detailed help for a specific command.',
@@ -81,8 +86,17 @@ discovery validation passive-data fallparams -t example.com
 [bold]Code Hosting Reconnaissance:[/bold]
 github gitlab bitbucket gitea -t example.com
 
-[bold]With Proxy:[/bold]
+[bold]With HTTP Proxy:[/bold]
 discovery validation processing -t example.com --proxy http://proxy:8080 --proxy-auth user:pass
+
+[bold]With SOCKS5 Proxy (WARP):[/bold]
+discovery validation processing -t example.com --proxy socks5://127.0.0.1:1080
+
+[bold]With SOCKS5 Proxy and Auth:[/bold]
+discovery validation processing -t example.com --proxy socks5://user:pass@proxy:1080
+
+[bold]Bypass Proxy for Local Hosts:[/bold]
+discovery validation processing -t example.com --proxy socks5://127.0.0.1:1080 --no-proxy localhost,127.0.0.1
     """, title="[bold magenta]Example Workflows[/bold magenta]", border_style="magenta")
     console.print(example_panel)
 

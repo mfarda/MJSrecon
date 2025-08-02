@@ -8,7 +8,7 @@ import time
 
 from common.config import CONFIG
 from common.logger import Logger
-from common.utils import ensure_dir
+from common.utils import ensure_dir, configure_proxy_session
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -48,7 +48,7 @@ def run(args: Any, config: Dict, logger: Logger, workflow_data: Dict) -> Dict:
         
         with tqdm(total=len(chunk_urls), desc=f"[{target}] Chunk {chunk_idx + 1}/{total_chunks}", unit="url", leave=False) as pbar:
             with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-                future_to_url = {executor.submit(check_url, url, timeout): url for url in chunk_urls}
+                future_to_url = {executor.submit(check_url, url, timeout, config): url for url in chunk_urls}
                 
                 for future in concurrent.futures.as_completed(future_to_url):
                     try:
@@ -83,14 +83,18 @@ def run(args: Any, config: Dict, logger: Logger, workflow_data: Dict) -> Dict:
 
     return {"live_urls": live_urls}
 
-def check_url(url: str, timeout: int) -> str | None:
+def check_url(url: str, timeout: int, config: Dict) -> str | None:
     """
     Checks a single URL to see if it's live (returns a 2xx or 3xx status code).
     """
     try:
         with requests.Session() as session:
             session.headers.update({'User-Agent': 'MJSRecon/1.0'})
-            response = session.get(url, timeout=timeout, allow_redirects=True, verify=False, stream=True)
+            
+            # Configure proxy using utility function
+            configure_proxy_session(session, config)
+            
+            response = session.get(url, timeout=timeout, allow_redirects=True, verify=config['proxy']['verify_ssl'], stream=True)
             if 200 <= response.status_code < 400:
                 return url
     except requests.exceptions.RequestException:

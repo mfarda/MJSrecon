@@ -59,6 +59,13 @@ def main():
     parser.add_argument('-q', '--quiet', action='store_true', help='Suppress console output except for warnings and errors.')
     parser.add_argument('--timestamp-format', default='%H:%M:%S', help='Timestamp format for console output (default: %%H:%%M:%%S)')
     
+    # Proxy options
+    parser.add_argument('--proxy', help='Proxy URL (e.g., socks5://127.0.0.1:1080, http://proxy:8080)')
+    parser.add_argument('--proxy-auth', help='Proxy authentication (username:password)')
+    parser.add_argument('--no-proxy', help='Comma-separated list of hosts to bypass proxy')
+    parser.add_argument('--proxy-timeout', type=int, default=30, help='Proxy connection timeout in seconds (default: 30)')
+    parser.add_argument('--proxy-verify-ssl', action='store_true', help='Verify SSL certificates when using proxy')
+    
     # Discovery options
     parser.add_argument('--gather-mode', choices=['g', 'w', 'k', 'gw', 'gk', 'wk', 'gwk'], default='gwk', help='Tools to use for discovery: g=gau, w=wayback, k=katana.')
     parser.add_argument('-d', '--depth', type=int, default=2, help='Katana crawl depth.')
@@ -83,6 +90,23 @@ def main():
     
     # Setup logger with timestamp format
     logger = Logger(log_dir=args.output, verbose=args.verbose, quiet=args.quiet, timestamp_format=args.timestamp_format)
+    
+    # Configure proxy settings
+    if args.proxy:
+        logger.info(f"Configuring proxy: {args.proxy}")
+        CONFIG['proxy']['enabled'] = True
+        CONFIG['proxy']['url'] = args.proxy
+        CONFIG['proxy']['auth'] = args.proxy_auth
+        CONFIG['proxy']['no_proxy'] = args.no_proxy
+        CONFIG['proxy']['timeout'] = args.proxy_timeout
+        CONFIG['proxy']['verify_ssl'] = args.proxy_verify_ssl
+        
+        # Set environment variables for external tools
+        import os
+        os.environ['HTTP_PROXY'] = args.proxy
+        os.environ['HTTPS_PROXY'] = args.proxy
+        if args.no_proxy:
+            os.environ['NO_PROXY'] = args.no_proxy
 
     # --- Argument Validation ---
     if not args.commands:
