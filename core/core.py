@@ -57,6 +57,7 @@ def main():
     # Logging
     parser.add_argument('-v', '--verbose', action='store_true', help='Enable verbose (DEBUG level) logging.')
     parser.add_argument('-q', '--quiet', action='store_true', help='Suppress console output except for warnings and errors.')
+    parser.add_argument('--timestamp-format', default='%H:%M:%S', help='Timestamp format for console output (default: %%H:%%M:%%S)')
     
     # Discovery options
     parser.add_argument('--gather-mode', choices=['g', 'w', 'k', 'gw', 'gk', 'wk', 'gwk'], default='gwk', help='Tools to use for discovery: g=gau, w=wayback, k=katana.')
@@ -80,8 +81,8 @@ def main():
         show_command_help(args.help_command)
         return
     
-    # Setup logger
-    logger = Logger(log_dir=args.output, verbose=args.verbose, quiet=args.quiet)
+    # Setup logger with timestamp format
+    logger = Logger(log_dir=args.output, verbose=args.verbose, quiet=args.quiet, timestamp_format=args.timestamp_format)
 
     # --- Argument Validation ---
     if not args.commands:

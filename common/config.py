@@ -334,9 +334,9 @@ CONFIG = {
         },
     },
     'timeouts': {
-        'command': 300,  # 5 minutes for long-running tools
-        'download': 30,
-        'analysis': 120, # Increased for potentially large JS files
+        'command': 1200,  # 5 minutes for long-running tools
+        'download': 120,
+        'analysis': 300, # Increased for potentially large JS files
         'verify': 10,    # Timeout for a single URL verification request
     },
     'excluded_extensions': {'.css', '.png', '.jpg', '.jpeg', '.svg', '.ico', '.gif', '.woff', '.woff2', '.swf', '.map'},
@@ -361,6 +361,29 @@ CONFIG = {
         'permutation_wordlist': 'permutation_wordlist.txt',
         'fuzzing_all': 'js_urls_fuzzing_all.txt',
         'fuzzing_new': 'js_urls_fuzzing_new.txt',
+        'all_urls': 'all_urls.txt',
+        'gau_urls': 'gau_urls.txt',
+        'gau_filtered': 'gau_filtered_urls.txt',
+        'wayback_urls': 'wayback_urls.txt',
+        'wayback_filtered': 'wayback_filtered_urls.txt',
+        'katana_urls': 'katana_urls.txt',
+        'katana_filtered': 'katana_filtered_urls.txt',
+        # Code hosting scanner files
+        'github_repositories': 'repositories.json',
+        'github_secrets': 'secrets_found.json',
+        'github_useful_data': 'useful_data.json',
+        'github_organizations': 'organizations.json',
+        'github_users': 'users.json',
+        'github_report': 'github_recon_report.md',
+        'gitlab_repositories': 'repositories.json',
+        'gitlab_secrets': 'secrets.json',
+        'gitlab_useful_data': 'useful_data.json',
+        'bitbucket_repositories': 'repositories.json',
+        'bitbucket_secrets': 'secrets.json',
+        'bitbucket_useful_data': 'useful_data.json',
+        'gitea_repositories': 'repositories.json',
+        'gitea_secrets': 'secrets.json',
+        'gitea_useful_data': 'useful_data.json',
     },
     'download': {
         'max_concurrent': 20,

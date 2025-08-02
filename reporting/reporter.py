@@ -33,7 +33,7 @@ def run(args: Any, config: Dict, logger: Logger, workflow_data: Dict) -> Dict:
         json.dump(workflow_data, f, indent=2, default=json_serializer)
 
     logger.success(f"[{target}] Comprehensive report saved to {report_file_txt} and {report_file_json}")
-    print(f"\nReport for {target} is ready. You can view the summary at: {report_file_txt}")
+    logger.info(f"Report for {target} is ready. You can view the summary at: {report_file_txt}")
 
     return {}
 

@@ -9,7 +9,7 @@ from common.utils import run_command
 from common.finder import exclude_urls_with_extensions
 from common.finder import write_lines_to_file
 
-def run_tool_concurrent(tool_name: str, cmd: List[str], config: Dict, logger: Logger) -> Tuple[str, Set[str]]:
+def run_tool_concurrent(tool_name: str, cmd: List[str], config: Dict, logger: Logger, output_dir: Path) -> Tuple[str, Set[str]]:
     """
     Run a single discovery tool and return its results.
     This function is designed to be called concurrently.
@@ -22,9 +22,12 @@ def run_tool_concurrent(tool_name: str, cmd: List[str], config: Dict, logger: Lo
             urls = set(stdout.splitlines())
             filtered_urls = exclude_urls_with_extensions(urls)
             
-            # Save individual tool results
-            write_lines_to_file(f"{tool_name}_urls.txt", urls)
-            write_lines_to_file(f"{tool_name}_filtered_urls.txt", filtered_urls)
+            # Save individual tool results to target output directory using config
+            tool_urls_file = config['files'].get(f'{tool_name}_urls', f'{tool_name}_urls.txt')
+            tool_filtered_file = config['files'].get(f'{tool_name}_filtered', f'{tool_name}_filtered_urls.txt')
+            
+            write_lines_to_file(output_dir / tool_urls_file, urls)
+            write_lines_to_file(output_dir / tool_filtered_file, filtered_urls)
             
             logger.success(f"{tool_name} found {len(filtered_urls)} new URLs.")
             return tool_name, filtered_urls
@@ -44,6 +47,7 @@ def run(args: Any, config: Dict, logger: Logger, workflow_data: Dict) -> Dict:
     Gathers all URLs from various sources for a single target using concurrent execution.
     """
     target = workflow_data['target']
+    target_output_dir = workflow_data['target_output_dir']
     gather_mode = args.gather_mode
     
     logger.info(f"Gathering URLs for '{target}' using mode '{gather_mode}'...")
@@ -71,7 +75,7 @@ def run(args: Any, config: Dict, logger: Logger, workflow_data: Dict) -> Dict:
         # Single tool - run sequentially (no benefit from concurrency)
         logger.info(f"Running single tool: {tools_to_run[0][0]}")
         tool_name, cmd = tools_to_run[0]
-        result_tool_name, result_urls = run_tool_concurrent(tool_name, cmd, config, logger)
+        result_tool_name, result_urls = run_tool_concurrent(tool_name, cmd, config, logger, target_output_dir)
         all_urls = result_urls
         
     else:
@@ -84,7 +88,7 @@ def run(args: Any, config: Dict, logger: Logger, workflow_data: Dict) -> Dict:
         with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
             # Submit all tool tasks
             future_to_tool = {
-                executor.submit(run_tool_concurrent, tool_name, cmd, config, logger): tool_name
+                executor.submit(run_tool_concurrent, tool_name, cmd, config, logger, target_output_dir): tool_name
                 for tool_name, cmd in tools_to_run
             }
             
@@ -108,8 +112,9 @@ def run(args: Any, config: Dict, logger: Logger, workflow_data: Dict) -> Dict:
     # Save combined results
     total_found = len(all_urls)
     if total_found > 0:
-        # Save to file instead of keeping in memory for large datasets
-        write_lines_to_file("all_urls.txt", all_urls)
+        # Save to target output directory instead of current directory using config
+        all_urls_file = config['files'].get('all_urls', 'all_urls.txt')
+        write_lines_to_file(target_output_dir / all_urls_file, all_urls)
         
         # For very large datasets, return a smaller sample for immediate processing
         if total_found > 100000:  # If more than 100k URLs
@@ -136,6 +141,7 @@ async def run_async(args: Any, config: Dict, logger: Logger, workflow_data: Dict
     Async version of the discovery module for maximum performance.
     """
     target = workflow_data['target']
+    target_output_dir = workflow_data['target_output_dir']
     gather_mode = args.gather_mode
     
     logger.info(f"Gathering URLs for '{target}' using async mode '{gather_mode}'...")
@@ -172,8 +178,12 @@ async def run_async(args: Any, config: Dict, logger: Logger, workflow_data: Dict
                 urls = set(stdout.splitlines())
                 filtered_urls = exclude_urls_with_extensions(urls)
                 
-                write_lines_to_file(f"{tool_name}_urls.txt", urls)
-                write_lines_to_file(f"{tool_name}_filtered_urls.txt", filtered_urls)
+                # Save to target output directory
+                tool_urls_file = config['files'].get(f'{tool_name}_urls', f'{tool_name}_urls.txt')
+                tool_filtered_file = config['files'].get(f'{tool_name}_filtered', f'{tool_name}_filtered_urls.txt')
+                
+                write_lines_to_file(target_output_dir / tool_urls_file, urls)
+                write_lines_to_file(target_output_dir / tool_filtered_file, filtered_urls)
                 
                 logger.success(f"{tool_name} found {len(filtered_urls)} new URLs.")
                 return tool_name, filtered_urls
@@ -205,10 +215,11 @@ async def run_async(args: Any, config: Dict, logger: Logger, workflow_data: Dict
             completed_tools.append(tool_name)
             logger.info(f"Completed {tool_name} ({len(urls)} URLs)")
     
-    # Save combined results
+    # Save combined results to target output directory
     total_found = len(all_urls)
     if total_found > 0:
-        write_lines_to_file("all_urls.txt", all_urls)
+        all_urls_file = config['files'].get('all_urls', 'all_urls.txt')
+        write_lines_to_file(target_output_dir / all_urls_file, all_urls)
         logger.success(f"Async discovery complete. Found {total_found} unique URLs for '{target}'.")
         logger.info(f"Tools completed: {', '.join(completed_tools)}")
     else:

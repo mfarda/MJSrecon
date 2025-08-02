@@ -57,6 +57,7 @@ def show_help():
         '-o, --output': 'Base output directory (default: ./output).',
         '-v, --verbose': 'Enable verbose (DEBUG level) logging.',
         '-q, --quiet': 'Suppress console output except for warnings/errors.',
+        '--timestamp-format': 'Timestamp format for console output (default: %H:%M:%S).',
         '--independent': 'Run a single command independently (requires --input).',
         '--input': 'Input file for a module in independent mode.',
         '--help-command <cmd>': 'Show detailed help for a specific command.',

@@ -1,0 +1,6 @@
+2025-08-02 18:57:23 [INFO    ] Checking for required tools...
+2025-08-02 18:57:23 [ERROR   ] Required tool 'fallparams' is not installed or not in PATH.
+2025-08-02 18:57:23 [ERROR   ] Required tool 'jsluice' is not installed or not in PATH.
+2025-08-02 18:57:23 [ERROR   ] Required tool 'trufflehog' is not installed or not in PATH.
+2025-08-02 18:57:23 [ERROR   ] Required tool 'unfurl' is not installed or not in PATH.
+2025-08-02 18:57:23 [ERROR   ] One or more required tools/scripts are missing. Please install them and try again.
