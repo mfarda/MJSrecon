@@ -37,7 +37,10 @@ def show_help():
         'enumeration': 'Fuzzes directories for more JS files.',
         'passive-data': 'Extracts parameters and important file types.',
         'fallparams': 'Performs dynamic parameter discovery on key URLs.',
-        'reconnaissance': 'Scans GitHub for secrets related to the target.',
+        'github': 'Scans GitHub for secrets related to the target.',
+        'gitlab': 'Scans GitLab for secrets related to the target.',
+        'bitbucket': 'Scans Bitbucket for secrets related to the target.',
+        'gitea': 'Scans Gitea for secrets related to the target.',
         'reporting': 'Generates a final summary report of all findings.',
     }
     for cmd, desc in commands.items():
@@ -73,6 +76,12 @@ discovery validation download analysis -t example.com
 
 [bold]Parameter Discovery:[/bold]
 discovery validation passive-data fallparams -t example.com
+
+[bold]Code Hosting Reconnaissance:[/bold]
+github gitlab bitbucket gitea -t example.com
+
+[bold]With Proxy:[/bold]
+discovery validation processing -t example.com --proxy http://proxy:8080 --proxy-auth user:pass
     """, title="[bold magenta]Example Workflows[/bold magenta]", border_style="magenta")
     console.print(example_panel)
 

@@ -16,6 +16,14 @@ CONFIG = {
             'linkfinder': BASE_DIR / "common" / "linkfinder.py"
         }
     },
+    'proxy': {
+        'enabled': False,
+        'url': None,
+        'auth': None,
+        'no_proxy': None,
+        'timeout': 30,
+        'verify_ssl': False
+    },
     'github_scanner': {
         # GitHub API Configuration
         'api_token_env': 'GITHUB_TOKEN',  # Environment variable name for GitHub API token
@@ -157,6 +165,173 @@ CONFIG = {
         'max_concurrent_scans': 4,    # Max concurrent scans per repo
         'cache_enabled': True,        # Enable API response caching
         'cache_ttl': 3600,           # Cache TTL in seconds (1 hour)
+    },
+    'gitlab_scanner': {
+        # GitLab API Configuration
+        'api_token_env': 'GITLAB_TOKEN',  # Environment variable name for GitLab API token
+        'rate_limit_wait': 60,  # Seconds to wait when rate limited
+        
+        # Tool Selection and Configuration
+        'enabled_tools': {
+            'trufflehog': True,
+            'gitleaks': True,
+            'custom_patterns': True,
+        },
+        
+        # Scanning Configuration
+        'max_repos_to_scan': 4,     # Maximum number of repositories to clone and scan
+        'max_file_size_mb': 10,      # Maximum file size to scan (in MB)
+        'clone_timeout': 300,         # Timeout for git clone operations (seconds)
+        'scan_timeout': 600,          # Timeout for scanning operations (seconds)
+        
+        # Search Configuration
+        'search_per_page': 100,       # Number of results per GitLab API page
+        'max_search_results': 1000,   # Maximum total search results to process
+        
+        # Secret Patterns for Custom Scanning
+        'secret_patterns': {
+            'api_keys': [
+                r'[aA][pP][iI][-_]?[kK][eE][yY].*[\'"][0-9a-zA-Z]{32,45}[\'"]',
+                r'[aA][pP][iI][-_]?[tT][oO][kK][eE][nN].*[\'"][0-9a-zA-Z]{32,45}[\'"]',
+                r'[sS][eE][cC][rR][eE][tT].*[\'"][0-9a-zA-Z]{32,45}[\'"]',
+            ],
+            'aws_keys': [
+                r'AKIA[0-9A-Z]{16}',
+                r'aws_access_key_id.*[\'"][0-9A-Z]{20}[\'"]',
+                r'aws_secret_access_key.*[\'"][0-9A-Za-z/+=]{40}[\'"]',
+            ],
+            'google_keys': [
+                r'AIza[0-9A-Za-z\-_]{35}',
+                r'ya29\.[0-9A-Za-z\-_]+',
+            ],
+            'database_connections': [
+                r'mysql://[a-zA-Z0-9._-]+:[a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+:[0-9]+/[a-zA-Z0-9._-]+',
+                r'postgresql://[a-zA-Z0-9._-]+:[a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+:[0-9]+/[a-zA-Z0-9._-]+',
+                r'mongodb://[a-zA-Z0-9._-]+:[a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+:[0-9]+/[a-zA-Z0-9._-]+',
+            ],
+            'private_keys': [
+                r'-----BEGIN PRIVATE KEY-----',
+                r'-----BEGIN RSA PRIVATE KEY-----',
+                r'-----BEGIN DSA PRIVATE KEY-----',
+                r'-----BEGIN EC PRIVATE KEY-----',
+            ],
+            'passwords': [
+                r'[pP][aA][sS][sS][wW][oO][rR][dD].*[\'"][^\'"]{8,}[\'"]',
+                r'[pP][wW][dD].*[\'"][^\'"]{8,}[\'"]',
+            ]
+        },
+    },
+    'bitbucket_scanner': {
+        # Bitbucket API Configuration
+        'api_token_env': 'BITBUCKET_TOKEN',  # Environment variable name for Bitbucket API token
+        'username_env': 'BITBUCKET_USERNAME',  # Environment variable name for Bitbucket username
+        'rate_limit_wait': 60,  # Seconds to wait when rate limited
+        
+        # Tool Selection and Configuration
+        'enabled_tools': {
+            'trufflehog': True,
+            'gitleaks': True,
+            'custom_patterns': True,
+        },
+        
+        # Scanning Configuration
+        'max_repos_to_scan': 4,     # Maximum number of repositories to clone and scan
+        'max_file_size_mb': 10,      # Maximum file size to scan (in MB)
+        'clone_timeout': 300,         # Timeout for git clone operations (seconds)
+        'scan_timeout': 600,          # Timeout for scanning operations (seconds)
+        
+        # Search Configuration
+        'search_per_page': 100,       # Number of results per Bitbucket API page
+        'max_search_results': 1000,   # Maximum total search results to process
+        
+        # Secret Patterns for Custom Scanning
+        'secret_patterns': {
+            'api_keys': [
+                r'[aA][pP][iI][-_]?[kK][eE][yY].*[\'"][0-9a-zA-Z]{32,45}[\'"]',
+                r'[aA][pP][iI][-_]?[tT][oO][kK][eE][nN].*[\'"][0-9a-zA-Z]{32,45}[\'"]',
+                r'[sS][eE][cC][rR][eE][tT].*[\'"][0-9a-zA-Z]{32,45}[\'"]',
+            ],
+            'aws_keys': [
+                r'AKIA[0-9A-Z]{16}',
+                r'aws_access_key_id.*[\'"][0-9A-Z]{20}[\'"]',
+                r'aws_secret_access_key.*[\'"][0-9A-Za-z/+=]{40}[\'"]',
+            ],
+            'google_keys': [
+                r'AIza[0-9A-Za-z\-_]{35}',
+                r'ya29\.[0-9A-Za-z\-_]+',
+            ],
+            'database_connections': [
+                r'mysql://[a-zA-Z0-9._-]+:[a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+:[0-9]+/[a-zA-Z0-9._-]+',
+                r'postgresql://[a-zA-Z0-9._-]+:[a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+:[0-9]+/[a-zA-Z0-9._-]+',
+                r'mongodb://[a-zA-Z0-9._-]+:[a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+:[0-9]+/[a-zA-Z0-9._-]+',
+            ],
+            'private_keys': [
+                r'-----BEGIN PRIVATE KEY-----',
+                r'-----BEGIN RSA PRIVATE KEY-----',
+                r'-----BEGIN DSA PRIVATE KEY-----',
+                r'-----BEGIN EC PRIVATE KEY-----',
+            ],
+            'passwords': [
+                r'[pP][aA][sS][sS][wW][oO][rR][dD].*[\'"][^\'"]{8,}[\'"]',
+                r'[pP][wW][dD].*[\'"][^\'"]{8,}[\'"]',
+            ]
+        },
+    },
+    'gitea_scanner': {
+        # Gitea API Configuration
+        'api_token_env': 'GITEA_TOKEN',  # Environment variable name for Gitea API token
+        'gitea_url_env': 'GITEA_URL',  # Environment variable name for Gitea URL (default: https://gitea.com)
+        'rate_limit_wait': 60,  # Seconds to wait when rate limited
+        
+        # Tool Selection and Configuration
+        'enabled_tools': {
+            'trufflehog': True,
+            'gitleaks': True,
+            'custom_patterns': True,
+        },
+        
+        # Scanning Configuration
+        'max_repos_to_scan': 4,     # Maximum number of repositories to clone and scan
+        'max_file_size_mb': 10,      # Maximum file size to scan (in MB)
+        'clone_timeout': 300,         # Timeout for git clone operations (seconds)
+        'scan_timeout': 600,          # Timeout for scanning operations (seconds)
+        
+        # Search Configuration
+        'search_per_page': 100,       # Number of results per Gitea API page
+        'max_search_results': 1000,   # Maximum total search results to process
+        
+        # Secret Patterns for Custom Scanning
+        'secret_patterns': {
+            'api_keys': [
+                r'[aA][pP][iI][-_]?[kK][eE][yY].*[\'"][0-9a-zA-Z]{32,45}[\'"]',
+                r'[aA][pP][iI][-_]?[tT][oO][kK][eE][nN].*[\'"][0-9a-zA-Z]{32,45}[\'"]',
+                r'[sS][eE][cC][rR][eE][tT].*[\'"][0-9a-zA-Z]{32,45}[\'"]',
+            ],
+            'aws_keys': [
+                r'AKIA[0-9A-Z]{16}',
+                r'aws_access_key_id.*[\'"][0-9A-Z]{20}[\'"]',
+                r'aws_secret_access_key.*[\'"][0-9A-Za-z/+=]{40}[\'"]',
+            ],
+            'google_keys': [
+                r'AIza[0-9A-Za-z\-_]{35}',
+                r'ya29\.[0-9A-Za-z\-_]+',
+            ],
+            'database_connections': [
+                r'mysql://[a-zA-Z0-9._-]+:[a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+:[0-9]+/[a-zA-Z0-9._-]+',
+                r'postgresql://[a-zA-Z0-9._-]+:[a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+:[0-9]+/[a-zA-Z0-9._-]+',
+                r'mongodb://[a-zA-Z0-9._-]+:[a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+:[0-9]+/[a-zA-Z0-9._-]+',
+            ],
+            'private_keys': [
+                r'-----BEGIN PRIVATE KEY-----',
+                r'-----BEGIN RSA PRIVATE KEY-----',
+                r'-----BEGIN DSA PRIVATE KEY-----',
+                r'-----BEGIN EC PRIVATE KEY-----',
+            ],
+            'passwords': [
+                r'[pP][aA][sS][sS][wW][oO][rR][dD].*[\'"][^\'"]{8,}[\'"]',
+                r'[pP][wW][dD].*[\'"][^\'"]{8,}[\'"]',
+            ]
+        },
     },
     'timeouts': {
         'command': 300,  # 5 minutes for long-running tools

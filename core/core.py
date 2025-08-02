@@ -17,6 +17,9 @@ from analysis.analyzer import run as analysis_run
 from fuzzingjs.fuzzingjs import run as fuzzingjs_run
 from reporting.reporter import run as reporting_run
 from github.github import run as github_run
+from gitlab.gitlab_scanner import run as gitlab_run
+from bitbucket.bitbucket_scanner import run as bitbucket_run
+from gitea.gitea_scanner import run as gitea_run
 from param_passive.param_passive import run as param_passive_run
 from fallparams.fallparams import run as fallparams_run
 
@@ -34,6 +37,9 @@ def main():
         'param-passive': param_passive_run,
         'fallparams': fallparams_run,
         'github': github_run,
+        'gitlab': gitlab_run,
+        'bitbucket': bitbucket_run,
+        'gitea': gitea_run,
         'reporting': reporting_run,
     }
     
@@ -131,6 +137,18 @@ def main():
             'target': target,
             'target_output_dir': target_output_dir
         }
+
+        # Load input file for independent mode
+        if args.independent and args.input:
+            try:
+                logger.info(f"Loading URLs from input file: {args.input}")
+                with args.input.open('r') as f:
+                    urls = set(line.strip() for line in f if line.strip())
+                workflow_data['all_urls'] = urls
+                logger.info(f"Loaded {len(urls)} URLs from input file")
+            except Exception as e:
+                logger.error(f"Could not read input file {args.input}: {e}")
+                return
 
         try:
             for command in args.commands:
