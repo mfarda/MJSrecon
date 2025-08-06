@@ -384,6 +384,7 @@ CONFIG = {
         'gitea_repositories': 'repositories.json',
         'gitea_secrets': 'secrets.json',
         'gitea_useful_data': 'useful_data.json',
+        'uro_urls': 'uro_urls.txt',
     },
     'download': {
         'max_concurrent': 20,

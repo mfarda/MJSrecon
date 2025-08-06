@@ -115,6 +115,19 @@ def run(args: Any, config: Dict, logger: Logger, workflow_data: Dict) -> Dict:
         # Save to target output directory instead of current directory using config
         all_urls_file = config['files'].get('all_urls', 'all_urls.txt')
         write_lines_to_file(target_output_dir / all_urls_file, all_urls)
+
+        uro_urls = None
+        if hasattr(args, 'uro') and args.uro:
+            from common.utils import run_uro
+            uro_file = target_output_dir / config['files']['uro_urls']
+            exit_code, _, uro_stderr = run_uro(target_output_dir / all_urls_file, uro_file)
+            if exit_code == 0:
+                logger.success(f"Uro deduplication complete. Shortened URLs saved to {uro_file}")
+                with uro_file.open('r') as f:
+                    uro_urls = set(line.strip() for line in f if line.strip())
+            else:
+                logger.error(f"Uro failed: {uro_stderr}")
+                uro_urls = set()
         
         # For very large datasets, return a smaller sample for immediate processing
         if total_found > 100000:  # If more than 100k URLs
@@ -132,8 +145,12 @@ def run(args: Any, config: Dict, logger: Logger, workflow_data: Dict) -> Dict:
             logger.info(f"Tools completed: {', '.join(completed_tools) if 'completed_tools' in locals() else 'N/A'}")
     else:
         logger.warning(f"Discovery complete. No URLs found for '{target}'.")
+        uro_urls = set()
 
-    return {"all_urls": all_urls}
+    result = {"all_urls": all_urls}
+    if uro_urls is not None:
+        result["uro_urls"] = uro_urls
+    return result
 
 # Alternative async version for even better performance (optional)
 async def run_async(args: Any, config: Dict, logger: Logger, workflow_data: Dict) -> Dict:

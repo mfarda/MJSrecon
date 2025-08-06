@@ -22,7 +22,7 @@ def run(args: Any, config: Dict, logger: Logger, workflow_data: Dict) -> Dict:
         return {"fuzzing_summary": {"status": "skipped"}}
 
     target = workflow_data['target']
-    live_urls = workflow_data.get('live_urls', set())
+    live_urls = workflow_data.get('uro_urls', workflow_data.get('live_urls', set()))
 
     if not live_urls:
         logger.warning(f"[{target}] No live URLs available for fuzzing. Skipping enumeration.")

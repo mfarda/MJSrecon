@@ -13,7 +13,7 @@ def run(args: Any, config: Dict, logger: Logger, workflow_data: Dict) -> Dict:
     Asynchronously downloads JavaScript files from a list of URLs.
     """
     target = workflow_data['target']
-    urls_dl = workflow_data.get('deduplicated_urls', workflow_data.get('live_urls', []))
+    urls_dl = workflow_data.get('uro_urls', workflow_data.get('deduplicated_urls', workflow_data.get('live_urls', [])))
     urls_to_download = find_urls_with_extension(urls_dl, '.js')
     
     if not urls_to_download:

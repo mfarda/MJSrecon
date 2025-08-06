@@ -17,7 +17,7 @@ def run(args: Any, config: Dict, logger: Logger, workflow_data: Dict) -> Dict:
     Verifies which of the discovered URLs are live and accessible.
     """
     target = workflow_data['target']
-    all_urls = workflow_data.get('all_urls', set())
+    all_urls = workflow_data.get('uro_urls', workflow_data.get('all_urls', set()))
     
     if not all_urls:
         logger.warning(f"[{target}] No URLs provided to the validation module. Skipping.")

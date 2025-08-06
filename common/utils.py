@@ -86,3 +86,27 @@ def get_proxy_config(config: dict) -> Optional[dict]:
             proxies['https'] = f"{proxy_url.scheme}://{username}:{password}@{proxy_url.netloc}"
     
     return proxies
+
+def run_uro(input_file: Path, output_file: Path, timeout: int = 300) -> Tuple[int, str, str]:
+    """
+    Run uro on the input file and write output to output_file.
+    Returns (exit_code, stdout, stderr).
+    """
+    cmd = ["uro", str(input_file)]
+    try:
+        with output_file.open('w') as out_f:
+            result = subprocess.run(
+                cmd,
+                stdout=out_f,
+                stderr=subprocess.PIPE,
+                text=True,
+                timeout=timeout,
+                env=os.environ.copy()
+            )
+        return result.returncode, '', result.stderr
+    except subprocess.TimeoutExpired:
+        return -1, '', f"uro timed out after {timeout} seconds"
+    except FileNotFoundError:
+        return -1, '', "uro command not found"
+    except Exception as e:
+        return -1, '', str(e)
