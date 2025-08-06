@@ -340,24 +340,65 @@ def run_manual_blind_test(targets_file: Path, config: Dict, logger: Logger) -> D
     with targets_file.open('r') as f:
         urls = [line.strip() for line in f if line.strip()]
     
-    for url in urls:
-        for payload in payloads:
+    if not urls:
+        logger.warning("No URLs found in targets file for manual blind testing.")
+        return {"vulnerable_count": 0}
+    
+    logger.info(f"Testing {len(urls)} URLs with {len(payloads)} payloads each...")
+    total_tests = len(urls) * len(payloads)
+    tests_completed = 0
+    
+    # Add global timeout (30 minutes max)
+    start_time = time.time()
+    max_runtime = 1800  # 30 minutes
+    
+    for url_idx, url in enumerate(urls, 1):
+        # Check global timeout
+        if time.time() - start_time > max_runtime:
+            logger.warning(f"Global timeout reached ({max_runtime}s). Stopping manual blind test.")
+            break
+            
+        logger.info(f"Testing URL {url_idx}/{len(urls)}: {url}")
+        
+        for payload_idx, payload in enumerate(payloads, 1):
+            tests_completed += 1
+            
+            # Progress logging every 10 tests
+            if tests_completed % 10 == 0:
+                elapsed_time = time.time() - start_time
+                logger.info(f"Progress: {tests_completed}/{total_tests} tests completed ({tests_completed/total_tests*100:.1f}%) - Runtime: {elapsed_time:.1f}s")
+            
             test_url = inject_payload(url, payload)
+            
             try:
                 start = time.time()
-                response = requests.get(test_url, timeout=timeout)
+                response = requests.get(test_url, timeout=timeout, allow_redirects=True, verify=False)
                 elapsed = time.time() - start
                 
                 if elapsed > delay_threshold:
                     logger.success(f"[DELAYED] {test_url} (delay: {elapsed:.1f}s)")
                     vulnerable.append((test_url, payload, elapsed))
-                    break
+                    break  # Move to next URL after finding vulnerability
+                    
             except requests.exceptions.Timeout:
                 logger.success(f"[TIMEOUT] {test_url} (>{timeout}s)")
                 vulnerable.append((test_url, payload, timeout))
-                break
+                break  # Move to next URL after finding vulnerability
+                
+            except requests.exceptions.ConnectionError:
+                logger.debug(f"Connection error for {test_url}")
+                continue
+                
+            except requests.exceptions.RequestException as e:
+                logger.debug(f"Request failed for {test_url}: {e}")
+                continue
+                
             except Exception as e:
-                logger.debug(f"Request failed: {e}")
+                logger.debug(f"Unexpected error for {test_url}: {e}")
+                continue
+    
+    total_runtime = time.time() - start_time
+    logger.info(f"Manual blind test completed in {total_runtime:.1f}s")
     
     # Save results
     if vulnerable:
@@ -391,25 +432,53 @@ def run_header_sqli_test(targets_file: Path, config: Dict, logger: Logger) -> Di
     with targets_file.open('r') as f:
         urls = [line.strip() for line in f if line.strip()]
     
-    for url in urls:
+    if not urls:
+        logger.warning("No URLs found in targets file for header-based testing.")
+        return {"vulnerable_count": 0}
+    
+    logger.info(f"Testing {len(urls)} URLs with {len(payloads)} payloads in {len(headers_to_test)} headers each...")
+    total_tests = len(urls) * len(headers_to_test) * len(payloads)
+    tests_completed = 0
+    
+    for url_idx, url in enumerate(urls, 1):
+        logger.info(f"Testing URL {url_idx}/{len(urls)}: {url}")
+        
         for header in headers_to_test:
-            for payload in payloads:
+            for payload_idx, payload in enumerate(payloads, 1):
+                tests_completed += 1
+                
+                # Progress logging every 20 tests
+                if tests_completed % 20 == 0:
+                    logger.info(f"Progress: {tests_completed}/{total_tests} tests completed ({tests_completed/total_tests*100:.1f}%)")
+                
                 custom_headers = {header: payload}
+                
                 try:
                     start = time.time()
-                    response = requests.get(url, headers=custom_headers, timeout=timeout)
+                    response = requests.get(url, headers=custom_headers, timeout=timeout, allow_redirects=True, verify=False)
                     elapsed = time.time() - start
                     
                     if elapsed > delay_threshold:
                         logger.success(f"[DELAYED] {url} ({header}: {payload}) (delay: {elapsed:.1f}s)")
                         vulnerable.append((url, header, payload, elapsed))
-                        break
+                        break  # Move to next header after finding vulnerability
+                        
                 except requests.exceptions.Timeout:
                     logger.success(f"[TIMEOUT] {url} ({header}: {payload}) (>{timeout}s)")
                     vulnerable.append((url, header, payload, timeout))
-                    break
+                    break  # Move to next header after finding vulnerability
+                    
+                except requests.exceptions.ConnectionError:
+                    logger.debug(f"Connection error for {url} with {header}")
+                    continue
+                    
+                except requests.exceptions.RequestException as e:
+                    logger.debug(f"Request failed for {url} with {header}: {e}")
+                    continue
+                    
                 except Exception as e:
-                    logger.debug(f"Request failed: {e}")
+                    logger.debug(f"Unexpected error for {url} with {header}: {e}")
+                    continue
     
     # Save results
     if vulnerable:
@@ -441,24 +510,52 @@ def run_xor_blind_test(targets_file: Path, config: Dict, logger: Logger) -> Dict
     with targets_file.open('r') as f:
         urls = [line.strip() for line in f if line.strip()]
     
-    for url in urls:
-        for payload in xor_payloads:
+    if not urls:
+        logger.warning("No URLs found in targets file for XOR testing.")
+        return {"vulnerable_count": 0}
+    
+    logger.info(f"Testing {len(urls)} URLs with {len(xor_payloads)} XOR payloads each...")
+    total_tests = len(urls) * len(xor_payloads)
+    tests_completed = 0
+    
+    for url_idx, url in enumerate(urls, 1):
+        logger.info(f"Testing URL {url_idx}/{len(urls)}: {url}")
+        
+        for payload_idx, payload in enumerate(xor_payloads, 1):
+            tests_completed += 1
+            
+            # Progress logging every 10 tests
+            if tests_completed % 10 == 0:
+                logger.info(f"Progress: {tests_completed}/{total_tests} tests completed ({tests_completed/total_tests*100:.1f}%)")
+            
             test_url = inject_payload(url, payload)
+            
             try:
                 start = time.time()
-                response = requests.get(test_url, timeout=timeout)
+                response = requests.get(test_url, timeout=timeout, allow_redirects=True, verify=False)
                 elapsed = time.time() - start
                 
                 if elapsed > delay_threshold:
                     logger.success(f"[DELAYED] {test_url} (delay: {elapsed:.1f}s)")
                     vulnerable.append((test_url, payload, elapsed))
-                    break
+                    break  # Move to next URL after finding vulnerability
+                    
             except requests.exceptions.Timeout:
                 logger.success(f"[TIMEOUT] {test_url} (>{timeout}s)")
                 vulnerable.append((test_url, payload, timeout))
-                break
+                break  # Move to next URL after finding vulnerability
+                
+            except requests.exceptions.ConnectionError:
+                logger.debug(f"Connection error for {test_url}")
+                continue
+                
+            except requests.exceptions.RequestException as e:
+                logger.debug(f"Request failed for {test_url}: {e}")
+                continue
+                
             except Exception as e:
-                logger.debug(f"Request failed: {e}")
+                logger.debug(f"Unexpected error for {test_url}: {e}")
+                continue
     
     # Save results
     if vulnerable:
