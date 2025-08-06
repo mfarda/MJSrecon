@@ -8,7 +8,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 CONFIG = {
     'tools': {
-        'required': ["waybackurls", "gau", "katana", "httpx", "unfurl", "fallparams"],
+        'required': ["waybackurls", "gau", "katana", "httpx", "unfurl", "fallparams", "gf"],
         'full_mode': ["jsluice", "trufflehog"],
         'python_tools': {
             # These paths are now relative to the project's root, making it more portable.

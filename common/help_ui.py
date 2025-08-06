@@ -57,6 +57,10 @@ def show_help():
         '--targets-file': 'A file with a list of target domains.',
         '-o, --output': 'Base output directory (default: ./output).',
         '--uro': 'Use uro to deduplicate/shorten URLs after discovery and use its output for all subsequent modules.',
+        '--gather-mode': 'Tools to use for discovery (g=gau, w=wayback, k=katana).',
+        '-d, --depth': 'Katana crawl depth (default: 2).',
+        '--fuzz-mode': 'Fuzzing mode (wordlist, permutation, both, off).',
+        '--fuzz-wordlist': 'Custom wordlist for fuzzing.',
         '--sqli-scanner': 'SQLi scanner to use (sqlmap or ghauri).',
         '--sqli-full-scan': 'Run full SQLi scan including automated scanning.',
         '--sqli-manual-blind': 'Run manual blind SQLi test (time-based).',
@@ -97,6 +101,12 @@ github gitlab bitbucket gitea -t example.com
 [bold]With URL Deduplication (uro):[/bold]
 discovery validation processing download analysis --uro -t example.com
 
+[bold]Custom Discovery Tools:[/bold]
+discovery validation --gather-mode gw -d 3 -t example.com
+
+[bold]Fuzzing with Custom Wordlist:[/bold]
+discovery validation fuzzingjs --fuzz-mode wordlist --fuzz-wordlist ./custom.txt -t example.com
+
 [bold]SQL Injection Reconnaissance:[/bold]
 discovery validation sqli --sqli-full-scan --sqli-scanner sqlmap -t example.com
 
@@ -105,6 +115,9 @@ discovery validation sqli --sqli-manual-blind --sqli-header-test --sqli-xor-test
 
 [bold]SQLi with Google Dorking:[/bold]
 discovery validation sqli --sqli-dorking --sqli-full-scan -t example.com
+
+[bold]Complete Workflow with uro:[/bold]
+discovery validation processing download analysis fuzzingjs sqli --uro --sqli-full-scan -t example.com
 
 [bold]With HTTP Proxy:[/bold]
 discovery validation processing -t example.com --proxy http://proxy:8080 --proxy-auth user:pass

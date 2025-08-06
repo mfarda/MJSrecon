@@ -39,36 +39,39 @@ def run(args: Any, config: Dict, logger: Logger, workflow_data: Dict) -> Dict:
     sqli_results_dir = target_output_dir / config['dirs']['sqli_results']
     ensure_dir(sqli_results_dir)
     
-    # Filter URLs for potential SQLi targets
+    # Step 1: Initial filtering for potential SQLi targets
     sqli_targets = filter_sqli_targets(urls, logger)
     
     if not sqli_targets:
         logger.warning(f"[{target}] No potential SQLi targets found after filtering.")
         return {"sqli_summary": {"status": "skipped", "reason": "no_targets"}}
     
-    # Save filtered targets
-    targets_file = sqli_results_dir / config['files']['sqli_targets']
-    with targets_file.open('w') as f:
-        for url in sorted(sqli_targets):
-            f.write(f"{url}\n")
-    
-    logger.success(f"[{target}] Found {len(sqli_targets)} potential SQLi targets.")
-    
-    # Run Google dorking if requested
+    # Step 2: Run Google dorking if requested
     if hasattr(args, 'sqli_dorking') and args.sqli_dorking:
         dork_targets = run_google_dorking(target, logger)
         if dork_targets:
             sqli_targets.update(dork_targets)
-            # Update targets file with new URLs
-            with targets_file.open('w') as f:
-                for url in sorted(sqli_targets):
-                    f.write(f"{url}\n")
             logger.success(f"[{target}] Added {len(dork_targets)} URLs from Google dorking.")
     
+    # Step 3: Consolidate and apply final filtering (uro + gf sqli)
+    final_targets = consolidate_and_filter_sqli(sqli_targets, logger)
+    
+    if not final_targets:
+        logger.warning(f"[{target}] No SQLi targets remaining after final filtering.")
+        return {"sqli_summary": {"status": "skipped", "reason": "no_final_targets"}}
+    
+    # Save final filtered targets
+    targets_file = sqli_results_dir / config['files']['sqli_targets']
+    with targets_file.open('w') as f:
+        for url in sorted(final_targets):
+            f.write(f"{url}\n")
+    
+    logger.success(f"[{target}] Found {len(final_targets)} final SQLi targets after filtering.")
+    
     results = {
-        "sqli_targets": sqli_targets,
+        "sqli_targets": final_targets,
         "sqli_summary": {
-            "total_targets": len(sqli_targets),
+            "total_targets": len(final_targets),
             "status": "completed"
         }
     }
@@ -95,7 +98,7 @@ def run(args: Any, config: Dict, logger: Logger, workflow_data: Dict) -> Dict:
     return results
 
 def filter_sqli_targets(urls: Set[str], logger: Logger) -> Set[str]:
-    """Filter URLs for potential SQLi targets using top 20 SQL injection prone parameters."""
+    """Filter URLs for potential SQLi targets using top 20 SQL injection prone parameters and gf sqli."""
     sqli_targets = set()
     
     # Top 20 SQL injection prone parameters
@@ -161,8 +164,84 @@ def filter_sqli_targets(urls: Set[str], logger: Logger) -> Set[str]:
             sqli_targets.add(url)
             continue
     
-    logger.info(f"Filtered {len(sqli_targets)} potential SQLi targets from {len(urls)} URLs.")
+    logger.info(f"Initial filtering found {len(sqli_targets)} potential SQLi targets from {len(urls)} URLs.")
+    
+    # Apply gf sqli filtering to the filtered URLs
+    if sqli_targets:
+        sqli_targets = apply_gf_sqli_filter(sqli_targets, logger)
+    
+    logger.info(f"After gf sqli filtering: {len(sqli_targets)} potential SQLi targets remaining.")
     return sqli_targets
+
+def apply_gf_sqli_filter(urls: Set[str], logger: Logger) -> Set[str]:
+    """Apply gf sqli filtering to URLs using the gf tool."""
+    logger.info("Applying gf sqli filtering to URLs...")
+    
+    try:
+        # Create a temporary file with URLs
+        import tempfile
+        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.txt') as temp_file:
+            for url in urls:
+                temp_file.write(f"{url}\n")
+            temp_file_path = temp_file.name
+        
+        # Run gf sqli command
+        cmd = f"cat {temp_file_path} | gf sqli"
+        exit_code, stdout, stderr = run_command(cmd.split(), timeout=300)
+        
+        # Clean up temp file
+        import os
+        os.unlink(temp_file_path)
+        
+        if exit_code == 0 and stdout:
+            # Parse the filtered URLs
+            filtered_urls = set(stdout.strip().split('\n'))
+            logger.success(f"gf sqli filtering completed. {len(filtered_urls)} URLs passed the filter.")
+            return filtered_urls
+        else:
+            logger.warning(f"gf sqli filtering failed or returned no results. Stderr: {stderr}")
+            # Return original URLs if gf fails
+            return urls
+            
+    except Exception as e:
+        logger.error(f"Error applying gf sqli filter: {e}")
+        # Return original URLs if there's an error
+        return urls
+
+def consolidate_and_filter_sqli(urls: Set[str], logger: Logger) -> Set[str]:
+    """Consolidate URLs and apply final filtering with uro and gf sqli."""
+    logger.info("Consolidating and applying final SQLi filtering...")
+    
+    try:
+        # Create a temporary file with all URLs
+        import tempfile
+        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.txt') as temp_file:
+            for url in urls:
+                temp_file.write(f"{url}\n")
+            temp_file_path = temp_file.name
+        
+        # Apply the filtering pipeline: cat urls | gf sqli | uro
+        cmd = f"cat {temp_file_path} | gf sqli | uro"
+        exit_code, stdout, stderr = run_command(cmd.split(), timeout=300)
+        
+        # Clean up temp file
+        import os
+        os.unlink(temp_file_path)
+        
+        if exit_code == 0 and stdout:
+            # Parse the final filtered URLs
+            final_urls = set(stdout.strip().split('\n'))
+            logger.success(f"Final filtering completed. {len(final_urls)} URLs passed the pipeline.")
+            return final_urls
+        else:
+            logger.warning(f"Final filtering failed or returned no results. Stderr: {stderr}")
+            # Return original URLs if pipeline fails
+            return urls
+            
+    except Exception as e:
+        logger.error(f"Error in final filtering pipeline: {e}")
+        # Return original URLs if there's an error
+        return urls
 
 def run_google_dorking(domain: str, logger: Logger) -> Set[str]:
     """Run Google dorking to find additional SQLi targets with anti-blocking measures."""
