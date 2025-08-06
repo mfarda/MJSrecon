@@ -55,6 +55,7 @@ def show_help():
         '-t, --target': 'A single target domain (e.g., example.com).',
         '--targets-file': 'A file with a list of target domains.',
         '-o, --output': 'Base output directory (default: ./output).',
+        '--uro': 'Use uro to deduplicate/shorten URLs after discovery and use its output for all subsequent modules.',
         '-v, --verbose': 'Enable verbose (DEBUG level) logging.',
         '-q, --quiet': 'Suppress console output except for warnings/errors.',
         '--timestamp-format': 'Timestamp format for console output (default: %H:%M:%S).',
@@ -85,6 +86,9 @@ discovery validation passive-data fallparams -t example.com
 
 [bold]Code Hosting Reconnaissance:[/bold]
 github gitlab bitbucket gitea -t example.com
+
+[bold]With URL Deduplication (uro):[/bold]
+discovery validation processing download analysis --uro -t example.com
 
 [bold]With HTTP Proxy:[/bold]
 discovery validation processing -t example.com --proxy http://proxy:8080 --proxy-auth user:pass

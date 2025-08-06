@@ -80,6 +80,9 @@ go install github.com/projectdiscovery/httpx/cmd/httpx@latest
 # URL Processing
 go install github.com/tomnomnom/unfurl@latest
 
+# URL Deduplication (optional, for --uro switch)
+pip install uro
+
 # Secret Detection
 pip install trufflehog
 # Download GitLeaks from: https://github.com/zricethezav/gitleaks/releases
@@ -136,6 +139,7 @@ python run_workflow.py [COMMANDS] [OPTIONS] -t TARGET -o OUTPUT_DIR
 | `-t, --target` | Target domain | `-t example.com` |
 | `-o, --output` | Output directory | `-o ./results` |
 | `--targets-file` | File with multiple targets | `--targets-file targets.txt` |
+| `--uro` | Use uro to deduplicate/shorten URLs after discovery | `--uro` |
 | `--independent` | Run single module | `--independent` |
 | `--input` | Input file for independent mode | `--input urls.txt` |
 
@@ -376,6 +380,20 @@ python run_workflow.py discovery -t example.com \
 python run_workflow.py discovery validation processing download analysis fuzzingjs param-passive fallparams reporting -t example.com -o ./results
 ```
 
+# Full workflow with URL deduplication (uro)
+python run_workflow.py discovery validation processing download analysis fuzzingjs param-passive fallparams reporting --uro -t example.com -o ./results
+```
+
+### URL Deduplication with uro
+
+```bash
+# Use uro to deduplicate URLs after discovery
+python run_workflow.py discovery validation download analysis --uro -t example.com -o ./results
+
+# Quick scan with uro for large datasets
+python run_workflow.py discovery validation download --uro -t example.com -o ./results
+```
+
 ### Code Hosting Reconnaissance
 
 ```bash
@@ -474,6 +492,7 @@ output/
 ├── example.com/
 │   ├── discovery/
 │   │   ├── all_urls.txt
+│   │   ├── uro_urls.txt
 │   │   ├── gau_urls.txt
 │   │   ├── wayback_urls.txt
 │   │   └── katana_urls.txt
