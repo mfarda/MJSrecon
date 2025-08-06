@@ -3,6 +3,7 @@ import shutil
 import subprocess
 import time
 import requests
+import glob
 from pathlib import Path
 from typing import Dict, Any, Set, List
 from urllib.parse import urlparse
@@ -13,25 +14,61 @@ from common.logger import Logger
 from common.utils import run_command, ensure_dir
 
 def get_gf_path() -> str:
-    """Get the path to the gf binary."""
-    # Common GF installation paths
-    gf_paths = [
-        "/root/go/bin/gf",
-        "/usr/local/bin/gf",
-        "/usr/bin/gf",
-        "gf"  # Fallback to PATH
+    """Get the path to the gf binary with improved detection."""
+    # First try to find gf in PATH
+    gf_path = shutil.which("gf")
+    if gf_path:
+        return gf_path
+    
+    # Common GF installation paths for different systems
+    common_paths = [
+        "/root/go/bin/gf",           # Common Linux root installation
+        "/usr/local/bin/gf",         # System-wide installation
+        "/usr/bin/gf",               # Package manager installation
+        "/home/*/go/bin/gf",         # User installation (will need expansion)
+        "~/go/bin/gf",               # User home go installation
+        "/opt/go/bin/gf"             # Alternative installation path
     ]
     
-    for path in gf_paths:
-        if os.path.exists(path) or shutil.which(path):
+    # Expand home directory path
+    expanded_paths = []
+    for path in common_paths:
+        if "~" in path:
+            expanded_paths.extend(glob.glob(os.path.expanduser(path)))
+        elif "*" in path:
+            expanded_paths.extend(glob.glob(path))
+        else:
+            expanded_paths.append(path)
+    
+    # Check each path
+    for path in expanded_paths:
+        if os.path.exists(path) and os.access(path, os.X_OK):
             return path
     
-    # If not found, return the default path
-    return "/root/go/bin/gf"
+    # If not found anywhere, return "gf" and let the system handle it
+    # This will cause an error if gf is not installed, which is appropriate
+    return "gf"
 
 def run(args: Any, config: Dict, logger: Logger, workflow_data: Dict) -> Dict:
     """
     SQLi reconnaissance module that uses discovered URLs from previous modules.
+    
+    This module now applies gf sqli filtering by default for all modes, including
+    manual blind testing. The gf tool is used to filter URLs for potential SQLi
+    vulnerabilities before running any tests.
+    
+    Default behavior (when no SQLi options are specified):
+    - Applies gf sqli filtering to all discovered URLs
+    - Runs manual blind testing on filtered results
+    
+    Args:
+        args: Command line arguments containing SQLi options
+        config: Application configuration
+        logger: Logger instance
+        workflow_data: Data from previous workflow modules
+        
+    Returns:
+        Dict containing SQLi targets and summary results
     """
     target = workflow_data['target']
     target_output_dir = workflow_data['target_output_dir']
@@ -59,41 +96,11 @@ def run(args: Any, config: Dict, logger: Logger, workflow_data: Dict) -> Dict:
     
     # If no SQLi options specified, default to manual blind mode
     if not sqli_options_specified:
-        logger.info(f"[{target}] No SQLi options specified. Defaulting to manual blind mode.")
+        logger.info(f"[{target}] No SQLi options specified. Defaulting to manual blind mode with gf sqli filtering.")
         args.sqli_manual_blind = True
     
-    # Check if only manual blind mode is requested (default mode)
-    manual_blind_only = (
-        getattr(args, 'sqli_manual_blind', False) and
-        not getattr(args, 'sqli_full_scan', False) and
-        not getattr(args, 'sqli_header_test', False) and
-        not getattr(args, 'sqli_xor_test', False)
-    )
-    
-    # If only manual blind mode, skip filtering and go directly to manual testing
-    if manual_blind_only:
-        logger.info(f"[{target}] Running in manual blind mode only (default mode).")
-        
-        # Save all URLs as targets for manual testing
-        targets_file = sqli_results_dir / config['files']['sqli_targets']
-        with targets_file.open('w') as f:
-            for url in sorted(urls):
-                f.write(f"{url}\n")
-        
-        logger.info(f"[{target}] Using all {len(urls)} URLs for manual blind testing.")
-        
-        # Run manual blind test
-        manual_results = run_manual_blind_test(targets_file, config, logger)
-        
-        return {
-            "sqli_targets": urls,
-            "sqli_summary": {
-                "total_targets": len(urls),
-                "status": "completed",
-                "mode": "manual_blind_only",
-                "manual_blind": manual_results
-            }
-        }
+    # Always apply gf sqli filtering as default behavior
+    logger.info(f"[{target}] Applying gf sqli filtering to {len(urls)} URLs...")
     
     # Step 1: Initial filtering for potential SQLi targets
     sqli_targets = filter_sqli_targets(urls, logger)
@@ -106,8 +113,10 @@ def run(args: Any, config: Dict, logger: Logger, workflow_data: Dict) -> Dict:
     final_targets = consolidate_and_filter_sqli(sqli_targets, logger)
     
     if not final_targets:
-        logger.warning(f"[{target}] No SQLi targets remaining after final filtering.")
-        return {"sqli_summary": {"status": "skipped", "reason": "no_final_targets"}}
+        logger.warning(f"[{target}] No SQLi targets remaining after gf sqli filtering.")
+        # If gf filtering returns no results, fall back to original filtered targets for manual testing
+        logger.info(f"[{target}] Falling back to initial filtered targets ({len(sqli_targets)} URLs) for manual testing.")
+        final_targets = sqli_targets
     
     # Save final filtered targets
     targets_file = sqli_results_dir / config['files']['sqli_targets']
@@ -115,13 +124,14 @@ def run(args: Any, config: Dict, logger: Logger, workflow_data: Dict) -> Dict:
         for url in sorted(final_targets):
             f.write(f"{url}\n")
     
-    logger.success(f"[{target}] Found {len(final_targets)} final SQLi targets after filtering.")
+    logger.success(f"[{target}] Found {len(final_targets)} final SQLi targets after gf sqli filtering.")
     
     results = {
         "sqli_targets": final_targets,
         "sqli_summary": {
             "total_targets": len(final_targets),
-            "status": "completed"
+            "status": "completed",
+            "gf_filtering_applied": True
         }
     }
     
@@ -131,8 +141,9 @@ def run(args: Any, config: Dict, logger: Logger, workflow_data: Dict) -> Dict:
         run_automated_scan(targets_file, scanner, config, logger)
         results["sqli_summary"]["automated_scan"] = "completed"
     
-    # Run manual tests if requested
+    # Run manual tests - this will run by default if no other options are specified
     if hasattr(args, 'sqli_manual_blind') and args.sqli_manual_blind:
+        logger.info(f"[{target}] Running manual blind test on gf sqli filtered targets...")
         manual_results = run_manual_blind_test(targets_file, config, logger)
         results["sqli_summary"]["manual_blind"] = manual_results
     
@@ -226,6 +237,12 @@ def apply_gf_sqli_filter(urls: Set[str], logger: Logger) -> Set[str]:
     """Apply gf sqli filtering to URLs using the gf tool."""
     logger.info("Applying gf sqli filtering to URLs...")
     
+    # First check if gf tool is available
+    gf_path = get_gf_path()
+    if not shutil.which(gf_path) and not os.path.exists(gf_path):
+        logger.warning("gf tool not found. Skipping gf sqli filtering.")
+        return urls
+    
     try:
         # Create a temporary file with URLs
         import tempfile
@@ -234,21 +251,25 @@ def apply_gf_sqli_filter(urls: Set[str], logger: Logger) -> Set[str]:
                 temp_file.write(f"{url}\n")
             temp_file_path = temp_file.name
         
-        # Run gf sqli command - FIXED: Use full path to gf binary
-        cmd = f"cat {temp_file_path} | {get_gf_path()} sqli"
+        # Run gf sqli command with improved error handling
+        cmd = f"cat {temp_file_path} | {gf_path} sqli"
+        logger.debug(f"Running gf sqli command: {cmd}")
         exit_code, stdout, stderr = run_command(cmd, timeout=300, shell=True)
         
         # Clean up temp file
-        import os
         os.unlink(temp_file_path)
         
-        if exit_code == 0 and stdout:
-            # Parse the filtered URLs
-            filtered_urls = set(stdout.strip().split('\n'))
-            logger.success(f"gf sqli filtering completed. {len(filtered_urls)} URLs passed the filter.")
-            return filtered_urls
+        if exit_code == 0:
+            if stdout and stdout.strip():
+                # Parse the filtered URLs
+                filtered_urls = set(line.strip() for line in stdout.strip().split('\n') if line.strip())
+                logger.success(f"gf sqli filtering completed. {len(filtered_urls)} URLs passed the filter.")
+                return filtered_urls
+            else:
+                logger.info("gf sqli filtering completed but returned no results.")
+                return set()
         else:
-            logger.warning(f"gf sqli filtering failed or returned no results. Stderr: {stderr}")
+            logger.warning(f"gf sqli filtering failed with exit code {exit_code}. Stderr: {stderr}")
             # Return original URLs if gf fails
             return urls
             
@@ -261,6 +282,12 @@ def consolidate_and_filter_sqli(urls: Set[str], logger: Logger) -> Set[str]:
     """Consolidate URLs and apply final filtering with uro and gf sqli."""
     logger.info("Consolidating and applying final SQLi filtering...")
     
+    # Check if gf tool is available
+    gf_path = get_gf_path()
+    if not shutil.which(gf_path) and not os.path.exists(gf_path):
+        logger.warning("gf tool not found. Skipping gf sqli filtering in consolidation.")
+        return urls
+    
     try:
         # Create a temporary file with all URLs
         import tempfile
@@ -269,21 +296,25 @@ def consolidate_and_filter_sqli(urls: Set[str], logger: Logger) -> Set[str]:
                 temp_file.write(f"{url}\n")
             temp_file_path = temp_file.name
         
-        # Apply the filtering pipeline: cat urls | gf sqli | uro - FIXED: Use full path to gf binary
-        cmd = f"cat {temp_file_path} | {get_gf_path()} sqli | uro"
+        # Apply the filtering pipeline: cat urls | gf sqli | uro
+        cmd = f"cat {temp_file_path} | {gf_path} sqli | uro"
+        logger.debug(f"Running consolidation command: {cmd}")
         exit_code, stdout, stderr = run_command(cmd, timeout=300, shell=True)
         
         # Clean up temp file
-        import os
         os.unlink(temp_file_path)
         
-        if exit_code == 0 and stdout:
-            # Parse the final filtered URLs
-            final_urls = set(stdout.strip().split('\n'))
-            logger.success(f"Final filtering completed. {len(final_urls)} URLs passed the pipeline.")
-            return final_urls
+        if exit_code == 0:
+            if stdout and stdout.strip():
+                # Parse the final filtered URLs
+                final_urls = set(line.strip() for line in stdout.strip().split('\n') if line.strip())
+                logger.success(f"Final filtering completed. {len(final_urls)} URLs passed the pipeline.")
+                return final_urls
+            else:
+                logger.info("Final filtering completed but returned no results.")
+                return set()
         else:
-            logger.warning(f"Final filtering failed or returned no results. Stderr: {stderr}")
+            logger.warning(f"Final filtering failed with exit code {exit_code}. Stderr: {stderr}")
             # Return original URLs if pipeline fails
             return urls
             
