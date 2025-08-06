@@ -115,7 +115,7 @@ def run(args: Any, config: Dict, logger: Logger, workflow_data: Dict) -> Dict:
         # Save to target output directory instead of current directory using config
         all_urls_file = config['files'].get('all_urls', 'all_urls.txt')
         write_lines_to_file(target_output_dir / all_urls_file, all_urls)
-
+        
         uro_urls = None
         if hasattr(args, 'uro') and args.uro:
             from common.utils import run_uro

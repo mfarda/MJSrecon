@@ -34,9 +34,10 @@ def show_help():
         'processing': 'Deduplicates live URLs based on content hash.',
         'download': 'Downloads unique JS files.',
         'analysis': 'Analyzes downloaded files for secrets and endpoints.',
-        'enumeration': 'Fuzzes directories for more JS files.',
-        'passive-data': 'Extracts parameters and important file types.',
+        'fuzzingjs': 'Fuzzes directories for more JS files.',
+        'param-passive': 'Extracts parameters and important file types.',
         'fallparams': 'Performs dynamic parameter discovery on key URLs.',
+        'sqli': 'Performs SQL injection reconnaissance and testing on discovered URLs.',
         'github': 'Scans GitHub for secrets related to the target.',
         'gitlab': 'Scans GitLab for secrets related to the target.',
         'bitbucket': 'Scans Bitbucket for secrets related to the target.',
@@ -56,6 +57,12 @@ def show_help():
         '--targets-file': 'A file with a list of target domains.',
         '-o, --output': 'Base output directory (default: ./output).',
         '--uro': 'Use uro to deduplicate/shorten URLs after discovery and use its output for all subsequent modules.',
+        '--sqli-scanner': 'SQLi scanner to use (sqlmap or ghauri).',
+        '--sqli-full-scan': 'Run full SQLi scan including automated scanning.',
+        '--sqli-manual-blind': 'Run manual blind SQLi test (time-based).',
+        '--sqli-header-test': 'Run header-based blind SQLi test.',
+        '--sqli-xor-test': 'Run XOR blind SQLi test.',
+        '--sqli-dorking': 'Use Google dorking for additional SQLi targets.',
         '-v, --verbose': 'Enable verbose (DEBUG level) logging.',
         '-q, --quiet': 'Suppress console output except for warnings/errors.',
         '--timestamp-format': 'Timestamp format for console output (default: %H:%M:%S).',
@@ -76,19 +83,28 @@ def show_help():
     # Example Workflows
     example_panel = Panel("""
 [bold]Full Recon:[/bold]
-discovery validation processing download analysis enumeration reporting -t example.com
+discovery validation processing download analysis fuzzingjs reporting -t example.com
 
 [bold]Quick Scan (No Fuzzing):[/bold]
 discovery validation download analysis -t example.com
 
 [bold]Parameter Discovery:[/bold]
-discovery validation passive-data fallparams -t example.com
+discovery validation param-passive fallparams -t example.com
 
 [bold]Code Hosting Reconnaissance:[/bold]
 github gitlab bitbucket gitea -t example.com
 
 [bold]With URL Deduplication (uro):[/bold]
 discovery validation processing download analysis --uro -t example.com
+
+[bold]SQL Injection Reconnaissance:[/bold]
+discovery validation sqli --sqli-full-scan --sqli-scanner sqlmap -t example.com
+
+[bold]SQLi with Manual Testing:[/bold]
+discovery validation sqli --sqli-manual-blind --sqli-header-test --sqli-xor-test -t example.com
+
+[bold]SQLi with Google Dorking:[/bold]
+discovery validation sqli --sqli-dorking --sqli-full-scan -t example.com
 
 [bold]With HTTP Proxy:[/bold]
 discovery validation processing -t example.com --proxy http://proxy:8080 --proxy-auth user:pass

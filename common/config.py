@@ -354,6 +354,7 @@ CONFIG = {
         'secretfinder': 'secretfinder',
         'linkfinder': 'linkfinder',
         'trufflehog': 'trufflehog',
+        'sqli_results': 'sqli_results',
     },
     'files': {
         'live_js': 'live_js_urls.txt',
@@ -385,6 +386,11 @@ CONFIG = {
         'gitea_secrets': 'secrets.json',
         'gitea_useful_data': 'useful_data.json',
         'uro_urls': 'uro_urls.txt',
+        'sqli_targets': 'sqli_targets.txt',
+        'sqli_results': 'sqli_results.txt',
+        'sqli_manual_results': 'sqli_manual_results.txt',
+        'sqli_header_results': 'sqli_header_results.txt',
+        'sqli_xor_results': 'sqli_xor_results.txt',
     },
     'download': {
         'max_concurrent': 20,
@@ -406,6 +412,13 @@ CONFIG = {
     'fallparams': {
         'max_workers': 20,
         'threads': 5,
+    },
+    'sqli': {
+        'timeout': 15,
+        'delay_threshold': 7,
+        'max_workers': 10,
+        'sqlmap_args': '--batch --random-agent --tamper=space2comment --level=5 --risk=3 --drop-set-cookie --threads 10 --dbs',
+        'ghauri_args': '--batch --dbs --level 3 --confirm',
     },
     'performance': {
         'max_concurrent_downloads': 20,

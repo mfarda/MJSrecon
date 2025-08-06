@@ -22,6 +22,7 @@ from bitbucket.bitbucket_scanner import run as bitbucket_run
 from gitea.gitea_scanner import run as gitea_run
 from param_passive.param_passive import run as param_passive_run
 from fallparams.fallparams import run as fallparams_run
+from sqli.sqli_recon import run as sqli_run
 
 def main():
     parser = argparse.ArgumentParser(description="MJSRecon: Modular JavaScript Reconnaissance Tool", add_help=False)
@@ -36,6 +37,7 @@ def main():
         'fuzzingjs': fuzzingjs_run,
         'param-passive': param_passive_run,
         'fallparams': fallparams_run,
+        'sqli': sqli_run,
         'github': github_run,
         'gitlab': gitlab_run,
         'bitbucket': bitbucket_run,
@@ -73,6 +75,14 @@ def main():
     # Fuzzing options
     parser.add_argument('--fuzz-mode', choices=['wordlist', 'permutation', 'both', 'off'], default='off', help='Fuzzing mode.')
     parser.add_argument('--fuzz-wordlist', type=Path, help='Custom wordlist for fuzzing.')
+    
+    # SQLi options
+    parser.add_argument('--sqli-scanner', choices=['sqlmap', 'ghauri'], default='sqlmap', help='SQLi scanner to use (sqlmap or ghauri)')
+    parser.add_argument('--sqli-full-scan', action='store_true', help='Run full SQLi scan including automated scanning')
+    parser.add_argument('--sqli-manual-blind', action='store_true', help='Run manual blind SQLi test (time-based)')
+    parser.add_argument('--sqli-header-test', action='store_true', help='Run header-based blind SQLi test')
+    parser.add_argument('--sqli-xor-test', action='store_true', help='Run XOR blind SQLi test')
+    parser.add_argument('--sqli-dorking', action='store_true', help='Use Google dorking for additional SQLi targets')
     
     # Help options
     parser.add_argument('-h', '--help', action='store_true', help='Show the main help message and exit.')

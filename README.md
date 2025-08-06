@@ -15,6 +15,7 @@ A comprehensive, modular reconnaissance tool designed for JavaScript file discov
 - **Download**: JavaScript file downloading and processing
 - **Analysis**: JavaScript analysis and beautification
 - **Fuzzing**: Parameter fuzzing with wordlists and permutations
+- **SQLi**: SQL injection reconnaissance and testing
 - **Reporting**: Comprehensive report generation
 
 ### Code Hosting Scanners
@@ -250,6 +251,31 @@ Generates comprehensive reports of findings.
 - JSON data
 - Statistics and metrics
 
+### 9. SQL Injection (`sqli`)
+
+Performs SQL injection reconnaissance and testing on discovered URLs.
+
+**Features:**
+- URL filtering for potential SQLi targets
+- Google dorking for additional targets
+- Automated scanning with sqlmap/ghauri
+- Manual blind SQLi testing (time-based)
+- Header-based SQLi testing
+- XOR blind SQLi testing
+
+**Options:**
+- `--sqli-scanner`: Scanner to use (`sqlmap` or `ghauri`)
+- `--sqli-full-scan`: Run automated scanning
+- `--sqli-manual-blind`: Run manual blind SQLi test
+- `--sqli-header-test`: Run header-based SQLi test
+- `--sqli-xor-test`: Run XOR blind SQLi test
+- `--sqli-dorking`: Use Google dorking
+
+**Example:**
+```bash
+python run_workflow.py discovery validation sqli --sqli-full-scan --sqli-scanner sqlmap -t example.com
+```
+
 ## 🔍 Code Hosting Scanners
 
 ### GitHub Scanner (`github`)
@@ -394,6 +420,22 @@ python run_workflow.py discovery validation download analysis --uro -t example.c
 python run_workflow.py discovery validation download --uro -t example.com -o ./results
 ```
 
+### SQL Injection Reconnaissance
+
+```bash
+# Full SQLi reconnaissance with automated scanning
+python run_workflow.py discovery validation sqli --sqli-full-scan --sqli-scanner sqlmap -t example.com -o ./results
+
+# SQLi with manual testing only
+python run_workflow.py discovery validation sqli --sqli-manual-blind --sqli-header-test --sqli-xor-test -t example.com -o ./results
+
+# SQLi with Google dorking
+python run_workflow.py discovery validation sqli --sqli-dorking --sqli-full-scan -t example.com -o ./results
+
+# SQLi with uro deduplication
+python run_workflow.py discovery validation sqli --uro --sqli-full-scan -t example.com -o ./results
+```
+
 ### Code Hosting Reconnaissance
 
 ```bash
@@ -506,6 +548,11 @@ output/
 │   │   └── analysis_results.json
 │   ├── fuzzingjs/
 │   │   └── fuzzing_results.txt
+│   ├── sqli_results/
+│   │   ├── sqli_targets.txt
+│   │   ├── sqli_manual_results.txt
+│   │   ├── sqli_header_results.txt
+│   │   └── sqli_xor_results.txt
 │   ├── github/
 │   │   ├── repositories.json
 │   │   ├── secrets.json
