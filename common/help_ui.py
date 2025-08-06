@@ -38,11 +38,11 @@ def show_help():
         'param-passive': 'Extracts parameters and important file types.',
         'fallparams': 'Performs dynamic parameter discovery on key URLs.',
         'sqli': 'Performs SQL injection reconnaissance and testing on discovered URLs.',
-        'github': 'Scans GitHub for secrets related to the target.',
-        'gitlab': 'Scans GitLab for secrets related to the target.',
-        'bitbucket': 'Scans Bitbucket for secrets related to the target.',
-        'gitea': 'Scans Gitea for secrets related to the target.',
-        'reporting': 'Generates a final summary report of all findings.',
+        'github': 'Scans GitHub for repositories, secrets, and useful data.',
+        'gitlab': 'Scans GitLab for repositories, secrets, and useful data.',
+        'bitbucket': 'Scans Bitbucket for repositories, secrets, and useful data.',
+        'gitea': 'Scans Gitea for repositories, secrets, and useful data.',
+        'reporting': 'Generates comprehensive reports from all module results.'
     }
     for cmd, desc in commands.items():
         cmd_table.add_row(cmd, desc)
@@ -53,9 +53,9 @@ def show_help():
     opt_table.add_column("Option", style="cyan", no_wrap=True)
     opt_table.add_column("Description")
     options = {
-        '-t, --target': 'A single target domain (e.g., example.com).',
-        '--targets-file': 'A file with a list of target domains.',
+        '-t, --target': 'Target domain or URL to scan.',
         '-o, --output': 'Base output directory (default: ./output).',
+        '--targets-file': 'File with multiple targets.',
         '--uro': 'Use uro to deduplicate/shorten URLs after discovery and use its output for all subsequent modules.',
         '--gather-mode': 'Tools to use for discovery (g=gau, w=wayback, k=katana).',
         '-d, --depth': 'Katana crawl depth (default: 2).',
@@ -63,22 +63,13 @@ def show_help():
         '--fuzz-wordlist': 'Custom wordlist for fuzzing.',
         '--sqli-scanner': 'SQLi scanner to use (sqlmap or ghauri).',
         '--sqli-full-scan': 'Run full SQLi scan including automated scanning.',
-        '--sqli-manual-blind': 'Run manual blind SQLi test (time-based).',
+        '--sqli-manual-blind': 'Run manual blind SQLi test (time-based) - DEFAULT MODE.',
         '--sqli-header-test': 'Run header-based blind SQLi test.',
         '--sqli-xor-test': 'Run XOR blind SQLi test.',
-        '--sqli-dorking': 'Use Google dorking for additional SQLi targets.',
         '-v, --verbose': 'Enable verbose (DEBUG level) logging.',
         '-q, --quiet': 'Suppress console output except for warnings/errors.',
-        '--timestamp-format': 'Timestamp format for console output (default: %H:%M:%S).',
-        '--proxy': 'Proxy URL (e.g., socks5://127.0.0.1:1080, http://proxy:8080).',
-        '--proxy-auth': 'Proxy authentication (username:password).',
-        '--no-proxy': 'Comma-separated list of hosts to bypass proxy.',
-        '--proxy-timeout': 'Proxy connection timeout in seconds (default: 30).',
-        '--proxy-verify-ssl': 'Verify SSL certificates when using proxy.',
-        '--independent': 'Run a single command independently (requires --input).',
-        '--input': 'Input file for a module in independent mode.',
-        '--help-command <cmd>': 'Show detailed help for a specific command.',
-        '-h, --help': 'Show this help message.'
+        '--independent': 'Run a single module independently.',
+        '--input': 'Input file for independent mode.'
     }
     for opt, desc in options.items():
         opt_table.add_row(opt, desc)

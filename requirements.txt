@@ -32,5 +32,4 @@ click>=8.1.0
 
 # Performance monitoring
 psutil>=5.9.0 
-uro
-googlesearch-python>=1.1.0 
+uro 

@@ -257,23 +257,28 @@ Performs SQL injection reconnaissance and testing on discovered URLs.
 
 **Features:**
 - URL filtering for potential SQLi targets
-- Google dorking for additional targets
 - Automated scanning with sqlmap/ghauri
-- Manual blind SQLi testing (time-based)
+- Manual blind SQLi testing (time-based) - **DEFAULT MODE**
 - Header-based SQLi testing
 - XOR blind SQLi testing
 
 **Options:**
 - `--sqli-scanner`: Scanner to use (`sqlmap` or `ghauri`)
 - `--sqli-full-scan`: Run automated scanning
-- `--sqli-manual-blind`: Run manual blind SQLi test
+- `--sqli-manual-blind`: Run manual blind SQLi test (time-based) - **DEFAULT**
 - `--sqli-header-test`: Run header-based SQLi test
 - `--sqli-xor-test`: Run XOR blind SQLi test
-- `--sqli-dorking`: Use Google dorking
 
 **Example:**
 ```bash
+# Default mode (manual blind testing only)
+python run_workflow.py discovery validation sqli -t example.com
+
+# Full SQLi reconnaissance with automated scanning
 python run_workflow.py discovery validation sqli --sqli-full-scan --sqli-scanner sqlmap -t example.com
+
+# SQLi with manual testing only
+python run_workflow.py discovery validation sqli --sqli-manual-blind --sqli-header-test --sqli-xor-test -t example.com
 ```
 
 ## 🔍 Code Hosting Scanners

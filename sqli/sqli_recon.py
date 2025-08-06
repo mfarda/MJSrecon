@@ -12,13 +12,6 @@ from common.config import CONFIG
 from common.logger import Logger
 from common.utils import run_command, ensure_dir
 
-# Try to import Google Search library
-try:
-    from googlesearch import search
-    GOOGLE_SEARCH_AVAILABLE = True
-except ImportError:
-    GOOGLE_SEARCH_AVAILABLE = False
-
 def get_gf_path() -> str:
     """Get the path to the gf binary."""
     # Common GF installation paths
@@ -56,6 +49,52 @@ def run(args: Any, config: Dict, logger: Logger, workflow_data: Dict) -> Dict:
     sqli_results_dir = target_output_dir / config['dirs']['sqli_results']
     ensure_dir(sqli_results_dir)
     
+    # Check if any SQLi options are specified
+    sqli_options_specified = any([
+        getattr(args, 'sqli_full_scan', False),
+        getattr(args, 'sqli_header_test', False),
+        getattr(args, 'sqli_xor_test', False),
+        getattr(args, 'sqli_manual_blind', False)
+    ])
+    
+    # If no SQLi options specified, default to manual blind mode
+    if not sqli_options_specified:
+        logger.info(f"[{target}] No SQLi options specified. Defaulting to manual blind mode.")
+        args.sqli_manual_blind = True
+    
+    # Check if only manual blind mode is requested (default mode)
+    manual_blind_only = (
+        getattr(args, 'sqli_manual_blind', False) and
+        not getattr(args, 'sqli_full_scan', False) and
+        not getattr(args, 'sqli_header_test', False) and
+        not getattr(args, 'sqli_xor_test', False)
+    )
+    
+    # If only manual blind mode, skip filtering and go directly to manual testing
+    if manual_blind_only:
+        logger.info(f"[{target}] Running in manual blind mode only (default mode).")
+        
+        # Save all URLs as targets for manual testing
+        targets_file = sqli_results_dir / config['files']['sqli_targets']
+        with targets_file.open('w') as f:
+            for url in sorted(urls):
+                f.write(f"{url}\n")
+        
+        logger.info(f"[{target}] Using all {len(urls)} URLs for manual blind testing.")
+        
+        # Run manual blind test
+        manual_results = run_manual_blind_test(targets_file, config, logger)
+        
+        return {
+            "sqli_targets": urls,
+            "sqli_summary": {
+                "total_targets": len(urls),
+                "status": "completed",
+                "mode": "manual_blind_only",
+                "manual_blind": manual_results
+            }
+        }
+    
     # Step 1: Initial filtering for potential SQLi targets
     sqli_targets = filter_sqli_targets(urls, logger)
     
@@ -63,14 +102,7 @@ def run(args: Any, config: Dict, logger: Logger, workflow_data: Dict) -> Dict:
         logger.warning(f"[{target}] No potential SQLi targets found after filtering.")
         return {"sqli_summary": {"status": "skipped", "reason": "no_targets"}}
     
-    # Step 2: Run Google dorking if requested
-    if hasattr(args, 'sqli_dorking') and args.sqli_dorking:
-        dork_targets = run_google_dorking(target, logger)
-        if dork_targets:
-            sqli_targets.update(dork_targets)
-            logger.success(f"[{target}] Added {len(dork_targets)} URLs from Google dorking.")
-    
-    # Step 3: Consolidate and apply final filtering (uro + gf sqli)
+    # Step 2: Consolidate and apply final filtering (uro + gf sqli)
     final_targets = consolidate_and_filter_sqli(sqli_targets, logger)
     
     if not final_targets:
@@ -259,139 +291,6 @@ def consolidate_and_filter_sqli(urls: Set[str], logger: Logger) -> Set[str]:
         logger.error(f"Error in final filtering pipeline: {e}")
         # Return original URLs if there's an error
         return urls
-
-def run_google_dorking(domain: str, logger: Logger) -> Set[str]:
-    """Run Google dorking to find additional SQLi targets with anti-blocking measures."""
-    if not GOOGLE_SEARCH_AVAILABLE:
-        logger.warning("Google search library not available. Skipping dorking.")
-        return set()
-    
-    logger.info(f"Running Google dorking for domain: {domain}")
-    
-    # Top 20 SQL injection prone parameters
-    sql_params = [
-        'id', 'page', 'category', 'product', 'article', 'news', 'item',
-        'user', 'member', 'account', 'profile', 'view', 'show', 'display',
-        'search', 'query', 'keyword', 'term', 'q', 's'
-    ]
-    
-    # File extensions that commonly have SQLi vulnerabilities
-    vulnerable_extensions = [
-        'php', 'asp', 'aspx', 'jsp', 'jspx', 'do', 'action'
-    ]
-    
-    # Build comprehensive dork patterns
-    dork_patterns = []
-    
-    # 1. Basic parameter-based dorks
-    for param in sql_params:
-        dork_patterns.extend([
-            f'inurl:{param}=',
-            f'inurl:{param}[]=',
-            f'inurl:{param}[0]=',
-            f'inurl:{param}_id=',
-            f'inurl:{param}id='
-        ])
-    
-    # 2. File extension + parameter combinations
-    for ext in vulnerable_extensions:
-        for param in sql_params[:10]:  # Use top 10 params for file extensions
-            dork_patterns.extend([
-                f'ext:{ext} inurl:{param}=',
-                f'ext:{ext} inurl:{param}[]=',
-                f'ext:{ext} inurl:{param}_id=',
-                f'ext:{ext} inurl:{param}id='
-            ])
-    
-    # 3. Common vulnerable file patterns
-    vulnerable_files = [
-        'product.php', 'view.php', 'show.php', 'display.php', 'detail.php',
-        'article.php', 'news.php', 'item.php', 'user.php', 'member.php',
-        'profile.php', 'account.php', 'search.php', 'query.php', 'result.php',
-        'list.php', 'category.php', 'page.php', 'index.php', 'main.php',
-        'product.asp', 'view.asp', 'show.asp', 'detail.asp', 'article.asp',
-        'news.asp', 'item.asp', 'user.asp', 'member.asp', 'profile.asp',
-        'account.asp', 'search.asp', 'query.asp', 'result.asp', 'list.asp',
-        'category.asp', 'page.asp', 'index.asp', 'main.asp'
-    ]
-    
-    for file in vulnerable_files:
-        dork_patterns.extend([
-            f'inurl:{file}?',
-            f'inurl:{file} inurl:id=',
-            f'inurl:{file} inurl:page=',
-            f'inurl:{file} inurl:category='
-        ])
-    
-    # 4. SQL error patterns (for finding already vulnerable sites)
-    error_patterns = [
-        'intext:"You have an error in your SQL syntax"',
-        'intext:"mysql_fetch_array() expects parameter"',
-        'intext:"Warning: mysql_"',
-        'intext:"PostgreSQL query failed: ERROR"',
-        'intext:"Microsoft OLE DB Provider for SQL Server"',
-        'intext:"Unclosed quotation mark after the character string"',
-        'intext:"ORA-00933: SQL command not properly ended"',
-        'intext:"SQL syntax error"',
-        'intext:"mysql_num_rows()"',
-        'intext:"mysql_fetch_object()"',
-        'intext:"mysql_fetch_assoc()"',
-        'intext:"mysql_fetch_row()"',
-        'intext:"mysql_fetch_field()"',
-        'intext:"mysql_fetch_lengths()"',
-        'intext:"mysql_fetch_array()"',
-        'intext:"mysql_fetch_object()"',
-        'intext:"mysql_fetch_assoc()"',
-        'intext:"mysql_fetch_row()"',
-        'intext:"mysql_fetch_field()"',
-        'intext:"mysql_fetch_lengths()"'
-    ]
-    
-    dork_patterns.extend(error_patterns)
-    
-    found_urls = set()
-    total_patterns = len(dork_patterns)
-    
-    for i, pattern in enumerate(dork_patterns, 1):
-        query = f"site:{domain} {pattern}"
-        logger.info(f"Running dork {i}/{total_patterns}: {query}")
-        
-        try:
-            # Anti-blocking measures
-            time.sleep(3 + (i % 5))  # Random delay between 3-8 seconds
-            
-            # Limit results per query to avoid rate limiting
-            # FIXED: Removed user_agent parameter as it's not supported
-            results = list(search(query, num_results=5))
-            
-            for url in results:
-                # Additional filtering for SQLi indicators
-                if any(indicator in url.lower() for indicator in ['=', '?', 'php', 'asp', 'aspx', 'jsp', 'jspx']):
-                    found_urls.add(url)
-            
-            # Progress logging
-            if i % 10 == 0:
-                logger.info(f"Progress: {i}/{total_patterns} patterns processed, {len(found_urls)} URLs found so far")
-                
-        except Exception as e:
-            error_msg = str(e)
-            if "HTTP Error 429" in error_msg or "rate limit" in error_msg.lower():
-                logger.warning(f"Rate limiting detected for pattern {i}. Pausing for 30 seconds...")
-                time.sleep(30)
-                continue
-            elif "HTTP Error 403" in error_msg:
-                logger.warning(f"Access forbidden for pattern {i}. Skipping...")
-                continue
-            elif "HTTP Error 503" in error_msg:
-                logger.warning(f"Service unavailable for pattern {i}. Pausing for 60 seconds...")
-                time.sleep(60)
-                continue
-            else:
-                logger.warning(f"Dorking failed for pattern {i} '{query}': {e}")
-                continue
-    
-    logger.success(f"Google dorking completed. Found {len(found_urls)} potential SQLi URLs.")
-    return found_urls
 
 def run_automated_scan(targets_file: Path, scanner: str, config: Dict, logger: Logger):
     """Run automated SQLi scanning with sqlmap or ghauri."""

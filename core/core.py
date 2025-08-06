@@ -79,10 +79,9 @@ def main():
     # SQLi options
     parser.add_argument('--sqli-scanner', choices=['sqlmap', 'ghauri'], default='sqlmap', help='SQLi scanner to use (sqlmap or ghauri)')
     parser.add_argument('--sqli-full-scan', action='store_true', help='Run full SQLi scan including automated scanning')
-    parser.add_argument('--sqli-manual-blind', action='store_true', help='Run manual blind SQLi test (time-based)')
+    parser.add_argument('--sqli-manual-blind', action='store_true', help='Run manual blind SQLi test (time-based) - DEFAULT MODE')
     parser.add_argument('--sqli-header-test', action='store_true', help='Run header-based blind SQLi test')
     parser.add_argument('--sqli-xor-test', action='store_true', help='Run XOR blind SQLi test')
-    parser.add_argument('--sqli-dorking', action='store_true', help='Use Google dorking for additional SQLi targets')
     
     # Help options
     parser.add_argument('-h', '--help', action='store_true', help='Show the main help message and exit.')
