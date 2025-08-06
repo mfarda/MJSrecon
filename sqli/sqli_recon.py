@@ -19,6 +19,23 @@ try:
 except ImportError:
     GOOGLE_SEARCH_AVAILABLE = False
 
+def get_gf_path() -> str:
+    """Get the path to the gf binary."""
+    # Common GF installation paths
+    gf_paths = [
+        "/root/go/bin/gf",
+        "/usr/local/bin/gf",
+        "/usr/bin/gf",
+        "gf"  # Fallback to PATH
+    ]
+    
+    for path in gf_paths:
+        if os.path.exists(path) or shutil.which(path):
+            return path
+    
+    # If not found, return the default path
+    return "/root/go/bin/gf"
+
 def run(args: Any, config: Dict, logger: Logger, workflow_data: Dict) -> Dict:
     """
     SQLi reconnaissance module that uses discovered URLs from previous modules.
@@ -185,9 +202,9 @@ def apply_gf_sqli_filter(urls: Set[str], logger: Logger) -> Set[str]:
                 temp_file.write(f"{url}\n")
             temp_file_path = temp_file.name
         
-        # Run gf sqli command
-        cmd = f"cat {temp_file_path} | gf sqli"
-        exit_code, stdout, stderr = run_command(cmd.split(), timeout=300)
+        # Run gf sqli command - FIXED: Use full path to gf binary
+        cmd = f"cat {temp_file_path} | {get_gf_path()} sqli"
+        exit_code, stdout, stderr = run_command(cmd, timeout=300, shell=True)
         
         # Clean up temp file
         import os
@@ -220,9 +237,9 @@ def consolidate_and_filter_sqli(urls: Set[str], logger: Logger) -> Set[str]:
                 temp_file.write(f"{url}\n")
             temp_file_path = temp_file.name
         
-        # Apply the filtering pipeline: cat urls | gf sqli | uro
-        cmd = f"cat {temp_file_path} | gf sqli | uro"
-        exit_code, stdout, stderr = run_command(cmd.split(), timeout=300)
+        # Apply the filtering pipeline: cat urls | gf sqli | uro - FIXED: Use full path to gf binary
+        cmd = f"cat {temp_file_path} | {get_gf_path()} sqli | uro"
+        exit_code, stdout, stderr = run_command(cmd, timeout=300, shell=True)
         
         # Clean up temp file
         import os
@@ -343,16 +360,9 @@ def run_google_dorking(domain: str, logger: Logger) -> Set[str]:
             # Anti-blocking measures
             time.sleep(3 + (i % 5))  # Random delay between 3-8 seconds
             
-            # Use different user agents to avoid detection
-            user_agents = [
-                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
-                'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36',
-                'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:91.0) Gecko/20100101 Firefox/91.0'
-            ]
-            
             # Limit results per query to avoid rate limiting
-            results = list(search(query, num_results=5, user_agent=user_agents[i % len(user_agents)]))
+            # FIXED: Removed user_agent parameter as it's not supported
+            results = list(search(query, num_results=5))
             
             for url in results:
                 # Additional filtering for SQLi indicators

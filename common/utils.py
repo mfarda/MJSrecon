@@ -9,13 +9,14 @@ def ensure_dir(path: Path) -> None:
     """Ensure a directory exists, creating it if necessary."""
     path.mkdir(parents=True, exist_ok=True)
 
-def run_command(cmd: list, timeout: int = 300) -> Tuple[int, str, str]:
+def run_command(cmd, timeout: int = 300, shell: bool = False) -> Tuple[int, str, str]:
     """
     Run a command and return exit code, stdout, and stderr.
     
     Args:
-        cmd: List of command and arguments
+        cmd: List of command and arguments (or string if shell=True)
         timeout: Timeout in seconds
+        shell: Whether to run command in shell (for pipelines)
         
     Returns:
         Tuple of (exit_code, stdout, stderr)
@@ -26,13 +27,15 @@ def run_command(cmd: list, timeout: int = 300) -> Tuple[int, str, str]:
             capture_output=True,
             text=True,
             timeout=timeout,
+            shell=shell,
             env=os.environ.copy()  # Pass current environment including proxy vars
         )
         return result.returncode, result.stdout, result.stderr
     except subprocess.TimeoutExpired:
         return -1, "", f"Command timed out after {timeout} seconds"
     except FileNotFoundError:
-        return -1, "", f"Command not found: {cmd[0]}"
+        cmd_name = cmd[0] if isinstance(cmd, list) else cmd.split()[0]
+        return -1, "", f"Command not found: {cmd_name}"
     except Exception as e:
         return -1, "", str(e)
 

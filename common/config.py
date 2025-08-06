@@ -396,10 +396,10 @@ CONFIG = {
         'max_concurrent': 20,
     },
     'validation': {
-        'max_workers': 10,  # Reduced from 50 to prevent high CPU usage
+        'max_workers': 20,  # Reduced from 50 to prevent high CPU usage
     },
     'analysis': {
-        'max_workers': 5, # Analysis is CPU-bound, fewer workers are better
+        'max_workers': 8, # Analysis is CPU-bound, fewer workers are better
     },
     'fuzzingjs': {  # Changed from enumeration
         'fuzz_threads': 40,
