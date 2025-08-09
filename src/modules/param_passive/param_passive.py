@@ -13,13 +13,16 @@ def run(args: Any, config: Dict, logger: Logger, workflow_data: Dict) -> Dict:
     Extracts parameters from discovered URLs and identifies important file types.
     """
     target = workflow_data['target']
-    live_urls = workflow_data.get('live_urls', set())
     
-    if not live_urls:
-        logger.warning(f"[{target}] No live URLs to process for parameter extraction. Skipping.")
+    # Always use all_urls from discovery module (raw discovered URLs)
+    if 'all_urls' in workflow_data:
+        urls_to_process = workflow_data['all_urls']
+        logger.info(f"[{target}] Using all discovered URLs for parameter extraction ({len(urls_to_process)} URLs)")
+    else:
+        logger.warning(f"[{target}] No discovered URLs available for parameter extraction. Run discovery module first.")
         return {"param_passive_summary": {}}
 
-    logger.info(f"[{target}] Starting parameter extraction for {len(live_urls)} URLs...")
+    logger.info(f"[{target}] Starting parameter extraction for {len(urls_to_process)} URLs...")
     
     target_output_dir = workflow_data['target_output_dir']
     param_passive_dir = target_output_dir / config['dirs']['param_passive']  # Changed from param-passive
@@ -30,7 +33,7 @@ def run(args: Any, config: Dict, logger: Logger, workflow_data: Dict) -> Dict:
     important_urls = set()
     all_params = set()
     
-    for url in live_urls:
+    for url in urls_to_process:
         parsed = urlparse(url)
         
         # Check for important file extensions

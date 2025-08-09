@@ -13,7 +13,18 @@ def run(args: Any, config: Dict, logger: Logger, workflow_data: Dict) -> Dict:
     Asynchronously downloads JavaScript files from a list of URLs.
     """
     target = workflow_data['target']
-    urls_dl = workflow_data.get('uro_urls', workflow_data.get('deduplicated_urls', workflow_data.get('live_urls', [])))
+    
+    # Use deduplicated URLs if available (from processing), otherwise use live URLs
+    if 'deduplicated_urls' in workflow_data:
+        urls_dl = workflow_data['deduplicated_urls']
+        logger.info(f"[{target}] Using deduplicated URLs for download ({len(urls_dl)} URLs)")
+    elif 'live_urls' in workflow_data:
+        urls_dl = workflow_data['live_urls']
+        logger.info(f"[{target}] Using validated live URLs for download ({len(urls_dl)} URLs)")
+    else:
+        logger.warning(f"[{target}] No URLs available for download. Run validation module first.")
+        return {"downloaded_files": []}
+    
     # Get allowed extensions from config
     allowed_extensions = config['download']['allowed_extensions']
     urls_to_download = []

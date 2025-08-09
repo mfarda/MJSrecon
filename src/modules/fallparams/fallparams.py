@@ -13,18 +13,28 @@ def run(args: Any, config: Dict, logger: Logger, workflow_data: Dict) -> Dict:
     """
     target = workflow_data['target']
     
-    live_urls = workflow_data['live_urls']
-    if live_urls:
-        seen_paths = set()
-        urls_to_scan = [url for url in live_urls 
-                        if urlparse(url).query and 
-                        (urlparse(url).path not in seen_paths and 
-                         seen_paths.add(urlparse(url).path) is None)]
-        
-        logger.info(f"[{target}] Found {len(urls_to_scan)}  URLs to scan with fallparams.")
+    # Use deduplicated URLs if available (from processing), otherwise use live URLs
+    if 'deduplicated_urls' in workflow_data:
+        live_urls = workflow_data['deduplicated_urls']
+        logger.info(f"[{target}] Using deduplicated URLs for fallparams ({len(live_urls)} URLs)")
+    elif 'live_urls' in workflow_data:
+        live_urls = workflow_data['live_urls']
+        logger.info(f"[{target}] Using validated live URLs for fallparams ({len(live_urls)} URLs)")
+    else:
+        logger.warning(f"[{target}] No URLs available for fallparams. Run validation module first.")
+        return {"fallparams_summary": {}}
+    
+    # Filter URLs that have query parameters
+    seen_paths = set()
+    urls_to_scan = [url for url in live_urls 
+                    if urlparse(url).query and 
+                    (urlparse(url).path not in seen_paths and 
+                     seen_paths.add(urlparse(url).path) is None)]
+    
+    logger.info(f"[{target}] Found {len(urls_to_scan)} URLs with parameters to scan with fallparams.")
     
     if not urls_to_scan:
-        logger.warning(f"[{target}] No URLs to scan with fallparams. Skipping.")
+        logger.warning(f"[{target}] No URLs with parameters to scan with fallparams. Skipping.")
         return {"fallparams_summary": {}}
     logger.info(f"[{target}] Starting dynamic parameter discovery with fallparams.")
     

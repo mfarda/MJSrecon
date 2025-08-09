@@ -59,6 +59,12 @@ def show_help_minimal():
     console.print("  Independent: python run_workflow.py discovery --independent --input urls.txt --env development")
     console.print()
     
+    console.print("WARNING: MODULE ORDER MATTERS!")
+    console.print("   Core pipeline: discovery -> validation -> processing")
+    console.print("   Then add: download, fuzzingjs, param-passive, fallparams, analysis")
+    console.print("   See docs/MODULE_EXECUTION_ORDER.md for details")
+    console.print()
+    
     console.print("HELP LEVELS:")
     console.print("  -h         This minimal help (no colors)")
     console.print("  -hh        Short help with colors and panels")

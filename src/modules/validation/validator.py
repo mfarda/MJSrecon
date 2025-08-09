@@ -17,13 +17,20 @@ def run(args: Any, config: Dict, logger: Logger, workflow_data: Dict) -> Dict:
     Verifies which of the discovered URLs are live and accessible.
     """
     target = workflow_data['target']
-    all_urls = workflow_data.get('uro_urls', workflow_data.get('all_urls', set()))
     
-    if not all_urls:
+    # Determine which URL set to validate based on --uro flag
+    if hasattr(args, 'uro') and args.uro and 'uro_urls' in workflow_data:
+        urls_to_validate = workflow_data['uro_urls']
+        logger.info(f"[{target}] Using URO deduplicated URLs for validation ({len(urls_to_validate)} URLs)")
+    else:
+        urls_to_validate = workflow_data.get('all_urls', set())
+        logger.info(f"[{target}] Using all discovered URLs for validation ({len(urls_to_validate)} URLs)")
+    
+    if not urls_to_validate:
         logger.warning(f"[{target}] No URLs provided to the validation module. Skipping.")
         return {"live_urls": set()}
 
-    logger.info(f"[{target}] Verifying {len(all_urls)} URLs...")
+    logger.info(f"[{target}] Verifying {len(urls_to_validate)} URLs...")
     
     # Process URLs in chunks to prevent memory exhaustion
     chunk_size = 10000  # Process 10k URLs at a time
@@ -32,7 +39,7 @@ def run(args: Any, config: Dict, logger: Logger, workflow_data: Dict) -> Dict:
     timeout = config['timeouts']['verify']
     
     # Convert to list for chunking
-    url_list = list(all_urls)
+    url_list = list(urls_to_validate)
     total_chunks = (len(url_list) + chunk_size - 1) // chunk_size
     
     logger.info(f"[{target}] Processing {len(url_list)} URLs in {total_chunks} chunks of {chunk_size}")
@@ -71,7 +78,7 @@ def run(args: Any, config: Dict, logger: Logger, workflow_data: Dict) -> Dict:
                     f.write(f"{url}\n")
             logger.info(f"[{target}] Saved {len(chunk_live_urls)} live URLs from chunk {chunk_idx + 1}")
 
-    logger.success(f"[{target}] Validation complete. Found {len(live_urls)} live URLs out of {len(all_urls)}.")
+    logger.success(f"[{target}] Validation complete. Found {len(live_urls)} live URLs out of {len(urls_to_validate)}.")
     
     # Save final results
     target_output_dir = workflow_data['target_output_dir']

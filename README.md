@@ -200,6 +200,24 @@ python run_workflow.py discovery validation processing download analysis -t exam
 python run_workflow.py discovery validation -t example.com -o ./results
 ```
 
+### ⚠️ Module Order Matters!
+**Module execution order is critical for optimal performance and results.** Each module processes and refines data for the next module.
+
+**Recommended order:**
+1. **Core Pipeline**: `discovery validation processing` (always in this order)
+2. **Analysis Modules**: `download fuzzingjs fallparams param_passive analysis` (flexible order)
+3. **Repository Scanning**: `github gitlab bitbucket gitea` (independent)
+
+```bash
+# ✅ OPTIMAL: Processing before download (saves bandwidth, avoids duplicates)
+python run_workflow.py discovery validation processing download fuzzingjs
+
+# ❌ SUBOPTIMAL: Download before processing (may download duplicates)
+python run_workflow.py discovery validation download processing fuzzingjs
+```
+
+📚 **See [Module Execution Order Guide](docs/MODULE_EXECUTION_ORDER.md) for detailed explanation.**
+
 ### Advanced Usage
 ```bash
 # Using proxy for stealth
