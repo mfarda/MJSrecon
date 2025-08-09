@@ -27,38 +27,14 @@ proxy:
   timeout: 30
   verify_ssl: false
 
-# Files used across modules
-files:
-  live_js: "live_js_urls.txt"
-  deduplicated_js: "deduplicated_js_urls.txt"
-  all_urls: "all_urls.txt"
-  uro_urls: "uro_urls.txt"
-  fuzzing_all: "fuzzing_all_urls.txt"
-  fuzzing_new: "fuzzing_new_urls.txt"
-  permutation_wordlist: "fuzz_permutations.txt"
-  sqli_targets: "sqli_targets.txt"
-  waybackurls_urls: "waybackurls_urls.txt"
-  waybackurls_filtered: "waybackurls_filtered_urls.txt"
-  gau_urls: "gau_urls.txt"
-  gau_filtered: "gau_filtered_urls.txt"
-  katana_urls: "katana_urls.txt"
-  katana_filtered: "katana_filtered_urls.txt"
 
-# Directories used across modules
-dirs:
-  downloaded_files: "downloaded_files"
-  results: "results"
-  ffuf_results: "ffuf_results"
-  sqli_results: "sqli_results"
-  param_passive: "param_passive"
-  fallparams_results: "fallparams_results"
 
 # Timeouts for various operations
 timeouts:
-  command: 300
-  download: 60
-  analysis: 300
-  verify: 30
+  command: 1200  # 5 minutes for long-running tools
+  download: 120
+  analysis: 300  # Increased for potentially large JS files
+  verify: 10     # Timeout for a single URL verification request
 
 # Discovery Module Configuration
 discovery:
@@ -66,9 +42,23 @@ discovery:
   depth: 2
   use_uro: false
 
+# Global URL filtering configuration
+excluded_extensions:
+  - ".css"
+  - ".png"
+  - ".jpg"
+  - ".jpeg"
+  - ".svg"
+  - ".ico"
+  - ".gif"
+  - ".woff"
+  - ".woff2"
+  - ".swf"
+  - ".map"
+
 # Validation Module Configuration
 validation:
-  max_workers: 10
+  max_workers: 20  # Reduced from 50 to prevent high CPU usage
   timeout: 30
   verify_ssl: false
 
@@ -82,7 +72,7 @@ processing:
 download:
   max_file_size_mb: 10
   timeout: 30
-  max_concurrent: 10
+  max_concurrent: 20
   allowed_extensions:
     - ".js"
     - ".jsx"
@@ -93,13 +83,13 @@ download:
 
 # Analysis Module Configuration
 analysis:
-  max_workers: 4
+  max_workers: 8  # Analysis is CPU-bound, fewer workers are better
   max_file_size_mb: 10
 
 # Enumeration / Fuzzing Configuration
 enumeration:
-  fuzz_threads: 10
-  fuzz_timeout: 30
+  fuzz_threads: 40
+  fuzz_timeout: 10
   # Fuzzing wordlist generation settings
   prefixes:
     - "app"
@@ -122,16 +112,32 @@ enumeration:
     - "_"
     - "."
 
+# FuzzingJS Module Configuration (alias for enumeration)
+fuzzingjs:
+  fuzz_threads: 40
+  fuzz_timeout: 10
+
 # Parameter Extraction Configuration
 param_passive:
   important_extensions:
+    - ".php"
+    - ".asp"
+    - ".aspx"
+    - ".jsp"
+    - ".jspx"
+    - ".ashx"
+    - ".phpx"
+    - ".html"
+    - ".htm"
     - ".js"
     - ".json"
     - ".map"
+  max_workers: 20
 
 # Parameter Enumeration Configuration
 fallparams:
-  threads: 10
+  threads: 5
+  max_workers: 20
 
 # SQL Injection Configuration
 sqli:
@@ -140,10 +146,11 @@ sqli:
   manual_blind: true
   header_test: false
   xor_test: false
-  timeout: 300
-  delay_threshold: 3
-  sqlmap_args: "--batch --random-agent --level=2 --risk=1"
-  ghauri_args: "--batch --random-agent"
+  timeout: 15
+  delay_threshold: 7
+  max_workers: 10
+  sqlmap_args: "--batch --random-agent --tamper=space2comment --level=5 --risk=3 --drop-set-cookie --threads 10 --dbs"
+  ghauri_args: "--batch --dbs --level 3 --confirm"
   # Vulnerable file extensions that commonly have SQLi vulnerabilities
   vulnerable_extensions:
     - ".php"
@@ -209,6 +216,106 @@ sqli:
     - "script"
     - "javascript"
     - "vbscript" 
+
+# Performance Configuration
+performance:
+  max_concurrent_downloads: 20
+  max_concurrent_analysis: 5
+  max_concurrent_github_requests: 3
+  cache_enabled: true
+  cache_ttl: 3600  # 1 hour
+  timeout_multiplier: 1.5  # Increase timeouts for slower connections
+
+# Secret Patterns for Custom Scanning (used by all scanners)
+secret_patterns:
+  api_keys:
+    - '[aA][pP][iI][-_]?[kK][eE][yY].*[\'"][0-9a-zA-Z]{32,45}[\'"]'
+    - '[aA][pP][iI][-_]?[tT][oO][kK][eE][nN].*[\'"][0-9a-zA-Z]{32,45}[\'"]'
+    - '[sS][eE][cC][rR][eE][tT].*[\'"][0-9a-zA-Z]{32,45}[\'"]'
+  aws_keys:
+    - 'AKIA[0-9A-Z]{16}'
+    - 'aws_access_key_id.*[\'"][0-9A-Z]{20}[\'"]'
+    - 'aws_secret_access_key.*[\'"][0-9A-Za-z/+=]{40}[\'"]'
+  google_keys:
+    - 'AIza[0-9A-Za-z\-_]{35}'
+    - 'ya29\.[0-9A-Za-z\-_]+'
+  database_connections:
+    - 'mysql://[a-zA-Z0-9._-]+:[a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+:[0-9]+/[a-zA-Z0-9._-]+'
+    - 'postgresql://[a-zA-Z0-9._-]+:[a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+:[0-9]+/[a-zA-Z0-9._-]+'
+    - 'mongodb://[a-zA-Z0-9._-]+:[a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+:[0-9]+/[a-zA-Z0-9._-]+'
+  private_keys:
+    - '-----BEGIN PRIVATE KEY-----'
+    - '-----BEGIN RSA PRIVATE KEY-----'
+    - '-----BEGIN DSA PRIVATE KEY-----'
+    - '-----BEGIN EC PRIVATE KEY-----'
+  passwords:
+    - '[pP][aA][sS][sS][wW][oO][rR][dD].*[\'"][^\'"]{8,}[\'"]'
+    - '[pP][wW][dD].*[\'"][^\'"]{8,}[\'"]'
+
+# Results directories for analysis tools
+results_dirs:
+  - "jsluice"
+  - "secretfinder"
+  - "linkfinder"
+  - "trufflehog"
+
+# Files used across modules
+files:
+  live_js: "live_js_urls.txt"
+  deduplicated_js: "deduplicated_js_urls.txt"
+  all_urls: "all_urls.txt"
+  uro_urls: "uro_urls.txt"
+  fuzzing_all: "js_urls_fuzzing_all.txt"
+  fuzzing_new: "js_urls_fuzzing_new.txt"
+  permutation_wordlist: "permutation_wordlist.txt"
+  sqli_targets: "sqli_targets.txt"
+  waybackurls_urls: "waybackurls_urls.txt"
+  waybackurls_filtered: "waybackurls_filtered_urls.txt"
+  wayback_urls: "wayback_urls.txt"
+  wayback_filtered: "wayback_filtered_urls.txt"
+  gau_urls: "gau_urls.txt"
+  gau_filtered: "gau_filtered_urls.txt"
+  katana_urls: "katana_urls.txt"
+  katana_filtered: "katana_filtered_urls.txt"
+  # Code hosting scanner files
+  github_repositories: "repositories.json"
+  github_secrets: "secrets_found.json"
+  github_useful_data: "useful_data.json"
+  github_organizations: "organizations.json"
+  github_users: "users.json"
+  github_report: "github_recon_report.md"
+  gitlab_repositories: "repositories.json"
+  gitlab_secrets: "secrets.json"
+  gitlab_useful_data: "useful_data.json"
+  bitbucket_repositories: "repositories.json"
+  bitbucket_secrets: "secrets.json"
+  bitbucket_useful_data: "useful_data.json"
+  gitea_repositories: "repositories.json"
+  gitea_secrets: "secrets.json"
+  gitea_useful_data: "useful_data.json"
+  sqli_results: "sqli_results.txt"
+  sqli_manual_results: "sqli_manual_results.txt"
+  sqli_header_results: "sqli_header_results.txt"
+  sqli_xor_results: "sqli_xor_results.txt"
+
+# Additional Directories
+dirs:
+  downloaded_files: "downloaded_files"
+  results: "results"
+  ffuf_results: "ffuf_results"
+  sqli_results: "sqli_results"
+  param_passive: "param_passive"
+  fallparams_results: "fallparams_results"
+  jsluice: "jsluice"
+  secretfinder: "secretfinder"
+  linkfinder: "linkfinder"
+  trufflehog: "trufflehog"
+
+# Scanner configurations are defined in separate files:
+# - config/github_scanner.yaml
+# - config/gitlab_scanner.yaml  
+# - config/bitbucket_scanner.yaml
+# - config/gitea_scanner.yaml
 
 # Reporting Configuration
 reporting:
