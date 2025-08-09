@@ -24,11 +24,30 @@ from src.modules.param_passive.param_passive import run as param_passive_run
 from src.modules.fallparams.fallparams import run as fallparams_run
 from src.modules.sqli.sqli_recon import run as sqli_run
 
+# Define command mapping
+COMMAND_MAP = {
+    'discovery': discovery_run,
+    'validation': validation_run,
+    'processing': processing_run,
+    'download': download_run,
+    'analysis': analysis_run,
+    'fuzzingjs': fuzzingjs_run,
+    'param-passive': param_passive_run,
+    'fallparams': fallparams_run,
+    'sqli': sqli_run,
+    'github': github_run,
+    'gitlab': gitlab_run,
+    'bitbucket': bitbucket_run,
+    'gitea': gitea_run,
+    'reporting': reporting_run,
+}
+
 def main():
     """Main entry point for the application."""
     parser = argparse.ArgumentParser(
         description="MJSRecon - Modular JavaScript Reconnaissance Tool",
         formatter_class=argparse.RawDescriptionHelpFormatter,
+        add_help=False,  # Disable default help to avoid conflicts
         epilog="""
 Examples:
   Basic discovery: python run_workflow.py discovery -t example.com
