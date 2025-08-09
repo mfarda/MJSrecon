@@ -29,11 +29,17 @@ def run(args: Any, config: Dict, logger: Logger, workflow_data: Dict) -> Dict:
         return {"fuzzing_summary": {"status": "skipped"}}
 
     logger.info(f"[{target}] Starting enumeration (fuzzing) with mode: {args.fuzz_mode}")
+    
+    # Count JavaScript files for transparency
+    js_files = {url for url in live_urls if url.lower().endswith('.js')}
+    logger.info(f"[{target}] Found {len(js_files)} JavaScript files out of {len(live_urls)} total discovered URLs")
 
-    unique_paths = get_unique_paths_from_urls(live_urls, logger)
+    unique_paths = get_unique_paths_from_urls(live_urls, config, args, logger)
     if not unique_paths:
-        logger.warning(f"[{target}] Could not derive any valid directory paths from live URLs. Skipping fuzzing.")
-        return {"fuzzing_summary": {"status": "skipped"}}
+        logger.warning(f"[{target}] No JavaScript files found in discovered URLs. No paths available for fuzzing.")
+        logger.info(f"[{target}] Total URLs discovered: {len(live_urls)}")
+        logger.info(f"[{target}] Consider checking if the target has JavaScript files or if discovery tools are working correctly.")
+        return {"fuzzing_summary": {"status": "skipped", "reason": "no_js_files_found"}}
 
     target_output_dir = workflow_data['target_output_dir']
     ffuf_results_dir = target_output_dir / config['dirs']['ffuf_results']
@@ -67,11 +73,42 @@ def run(args: Any, config: Dict, logger: Logger, workflow_data: Dict) -> Dict:
         }
     }
 
-def get_unique_paths_from_urls(urls: Set[str], logger: Logger) -> Dict[str, str]:
-    """Extracts unique base URLs and directory paths from a set of URLs."""
+def get_unique_paths_from_urls(urls: Set[str], config: Dict, args: Any, logger: Logger) -> Dict[str, str]:
+    """Extracts unique base URLs and directory paths from JavaScript file URLs only."""
     unique_paths = {}
+    js_urls_processed = 0
+    
+    # Get configuration for path selection (CLI args take precedence)
+    if hasattr(args, 'fuzz_all_paths') and args.fuzz_all_paths:
+        js_only = False
+        include_related = False
+    elif hasattr(args, 'fuzz_js_only') and args.fuzz_js_only:
+        js_only = True
+        include_related = False
+    else:
+        # Fallback to config
+        js_only = config.get('fuzzingjs', {}).get('js_only_paths', True)
+        include_related = config.get('fuzzingjs', {}).get('include_related_paths', False)
+    
+    max_paths = config.get('fuzzingjs', {}).get('max_paths', 50)
+    
+    # Define file extensions to include
+    if js_only:
+        if include_related:
+            valid_extensions = {'.js', '.ts', '.jsx', '.tsx', '.vue', '.mjs'}
+        else:
+            valid_extensions = {'.js'}
+    else:
+        # Fallback to old behavior - include all URLs
+        valid_extensions = None
+    
     for url in urls:
         try:
+            # Check if URL has valid extension
+            if valid_extensions:
+                if not any(url.lower().endswith(ext) for ext in valid_extensions):
+                    continue
+                
             parsed = urlparse(url)
             base_url = f"{parsed.scheme}://{parsed.netloc}"
             dir_path = '/'.join(parsed.path.split('/')[:-1])
@@ -81,9 +118,21 @@ def get_unique_paths_from_urls(urls: Set[str], logger: Logger) -> Dict[str, str]
                 dir_path = '/'
             if dir_path not in unique_paths:
                 unique_paths[dir_path] = base_url
-                logger.debug(f"Discovered unique path for fuzzing: {base_url}{dir_path}")
+                js_urls_processed += 1
+                logger.debug(f"Discovered unique path for fuzzing from JS file: {base_url}{dir_path}")
+                
+                # Stop if we've reached the maximum paths limit
+                if len(unique_paths) >= max_paths:
+                    logger.info(f"Reached maximum paths limit ({max_paths}). Stopping path discovery.")
+                    break
+                    
         except Exception:
             continue
+    
+    if js_only:
+        logger.info(f"Processed {js_urls_processed} JavaScript URLs, found {len(unique_paths)} unique paths for fuzzing")
+    else:
+        logger.info(f"Processed all URLs, found {len(unique_paths)} unique paths for fuzzing")
     return unique_paths
 
 def get_unique_js_filenames(urls: Set[str]) -> Set[str]:

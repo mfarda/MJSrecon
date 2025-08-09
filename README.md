@@ -221,6 +221,21 @@ python run_workflow.py discovery -t example.com --gather-mode gk --depth 3
 python run_workflow.py discovery validation processing -t example.com --uro
 ```
 
+### Fuzzing Path Selection Control
+
+```bash
+# Only fuzz paths from JavaScript files (default behavior)
+python run_workflow.py discovery validation fuzzingjs -t example.com --fuzz-mode both --fuzz-wordlist ~/SecLists/Discovery/Web-Content/raft-small-words-lowercase.txt
+
+# Fuzz paths from all discovered URLs (more aggressive)
+python run_workflow.py discovery validation fuzzingjs -t example.com --fuzz-mode both --fuzz-wordlist ~/SecLists/Discovery/Web-Content/raft-small-words-lowercase.txt --fuzz-all-paths
+
+# Explicitly set JavaScript-only mode
+python run_workflow.py discovery validation fuzzingjs -t example.com --fuzz-mode both --fuzz-wordlist ~/SecLists/Discovery/Web-Content/raft-small-words-lowercase.txt --fuzz-js-only
+```
+
+The `--fuzz-js-only` option (enabled by default) significantly reduces fuzzing time by only targeting directories that contain JavaScript files, which are more likely to contain additional JS files.
+
 ### Workflow Commands
 | Command | Description |
 |---------|-------------|
@@ -248,10 +263,15 @@ python run_workflow.py discovery validation processing -t example.com --uro
 | `--env` | Configuration environment (development/production/testing) |
 | `--proxy` | Proxy URL (SOCKS5/HTTP) |
 | `--command-timeout` | Override command timeout |
+| `--discovery-timeout` | Override discovery timeout |
 | `--independent` | Run single module mode |
 | `--input` | Input file for independent mode |
 | `--uro` | Use uro for URL deduplication |
 | `--gather-mode` | Discovery tools selection |
+| `--fuzz-mode` | Fuzzing mode: wordlist/permutation/both/off |
+| `--fuzz-wordlist` | Custom wordlist for fuzzing |
+| `--fuzz-js-only` | Only fuzz paths from JavaScript files (default: true) |
+| `--fuzz-all-paths` | Fuzz paths from all discovered URLs |
 | `-v, --verbose` | Verbose logging |
 
 ## 🔧 Configuration Files
@@ -332,6 +352,12 @@ python run_workflow.py discovery -t example.com --proxy socks5://127.0.0.1:40000
 For large targets that may timeout:
 ```bash
 python run_workflow.py discovery -t large-target.com --command-timeout 7200 --env production
+```
+
+### Discovery Timeout Control
+For discovery tools that hang (especially katana with deep crawling):
+```bash
+python run_workflow.py discovery -t example.com --discovery-timeout 300 --depth 2
 ```
 
 ### Concurrent Processing

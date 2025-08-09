@@ -85,6 +85,8 @@ For detailed help with examples and customization: python run_workflow.py -hhh
     # Fuzzing arguments
     parser.add_argument('--fuzz-mode', choices=['wordlist', 'permutation', 'both', 'off'], default='off', help='Fuzzing mode (default: off)')
     parser.add_argument('--fuzz-wordlist', help='Custom wordlist for fuzzing')
+    parser.add_argument('--fuzz-js-only', action='store_true', default=True, help='Only fuzz paths from JavaScript files (default: true)')
+    parser.add_argument('--fuzz-all-paths', action='store_true', help='Fuzz paths from all discovered URLs (overrides --fuzz-js-only)')
 
     # SQL injection arguments
     parser.add_argument('--sqli-scanner', choices=['sqlmap', 'ghauri'], default='sqlmap', help='SQLi scanner to use (default: sqlmap)')

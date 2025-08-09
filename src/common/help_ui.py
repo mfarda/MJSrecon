@@ -169,7 +169,9 @@ def show_help():
     fuzzing_table.add_column("Description")
     fuzzing_options = {
         '--fuzz-mode': 'Fuzzing mode: wordlist, permutation, both, off (default: off).',
-        '--fuzz-wordlist': 'Custom wordlist for fuzzing (required for wordlist/both modes).'
+        '--fuzz-wordlist': 'Custom wordlist for fuzzing.',
+        '--fuzz-js-only': 'Only fuzz paths from JavaScript files (default: true).',
+        '--fuzz-all-paths': 'Fuzz paths from all discovered URLs (overrides --fuzz-js-only).'
     }
     for opt, desc in fuzzing_options.items():
         fuzzing_table.add_row(opt, desc)
@@ -309,7 +311,8 @@ def show_help_extended():
         '--env': 'Configuration environment: development, production, testing (default: development).',
         '--independent': 'Run a single module independently (requires --input).',
         '--input': 'Input file for independent mode.',
-        '--command-timeout': 'Override command timeout in seconds (default: from config).'
+        '--command-timeout': 'Override command timeout in seconds (default: from config).',
+        '--discovery-timeout': 'Override discovery timeout in seconds (default: from config).'
     }
     for opt, desc in core_options.items():
         core_table.add_row(opt, desc)
@@ -362,7 +365,9 @@ def show_help_extended():
     fuzzing_table.add_column("Description")
     fuzzing_options = {
         '--fuzz-mode': 'Fuzzing mode: wordlist, permutation, both, off (default: off).',
-        '--fuzz-wordlist': 'Custom wordlist for fuzzing.'
+        '--fuzz-wordlist': 'Custom wordlist for fuzzing.',
+        '--fuzz-js-only': 'Only fuzz paths from JavaScript files (default: true).',
+        '--fuzz-all-paths': 'Fuzz paths from all discovered URLs (overrides --fuzz-js-only).'
     }
     for opt, desc in fuzzing_options.items():
         fuzzing_table.add_row(opt, desc)
@@ -643,6 +648,8 @@ def show_command_help(command: str):
             'options': {
                 '--fuzz-mode': 'Fuzzing mode (wordlist, permutation, both, off)',
                 '--fuzz-wordlist': 'Custom wordlist for fuzzing (required for wordlist/both)',
+                '--fuzz-js-only': 'Only fuzz paths from JavaScript files (default: true).',
+                '--fuzz-all-paths': 'Fuzz paths from all discovered URLs (overrides --fuzz-js-only).',
                 '--env': 'Environment affects threads and timeouts'
             }
         },

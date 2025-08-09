@@ -117,6 +117,10 @@ enumeration:
 fuzzingjs:
   fuzz_threads: 40
   fuzz_timeout: 10
+  # Fuzzing path selection behavior
+  js_only_paths: true  # Only fuzz paths from JavaScript files (recommended)
+  include_related_paths: false  # Include paths from related file types (.ts, .jsx, .vue)
+  max_paths: 50  # Maximum number of paths to fuzz
 
 # Parameter Extraction Configuration
 param_passive:
