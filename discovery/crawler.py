@@ -9,14 +9,50 @@ from common.utils import run_command
 from common.finder import exclude_urls_with_extensions
 from common.finder import write_lines_to_file
 
-def run_tool_concurrent(tool_name: str, cmd: List[str], config: Dict, logger: Logger, output_dir: Path) -> Tuple[str, Set[str]]:
+def run_tool_concurrent(tool_name: str, cmd: List[str], config: Dict, logger: Logger, output_dir: Path, use_proxy: bool = False, proxy_url: str = None) -> Tuple[str, Set[str]]:
     """
     Run a single discovery tool and return its results.
     This function is designed to be called concurrently.
+    
+    Args:
+        tool_name: Name of the tool
+        cmd: Command to run
+        config: Configuration dictionary
+        logger: Logger instance
+        output_dir: Output directory
+        use_proxy: Whether to use proxy for this tool
+        proxy_url: Proxy URL to use (if use_proxy is True)
     """
     try:
         logger.info(f"Running {tool_name}...")
-        exit_code, stdout, stderr = run_command(cmd, timeout=config['timeouts']['command'])
+        
+        # Handle proxy configuration for different tools
+        if use_proxy and proxy_url:
+            logger.debug(f"Using proxy {proxy_url} for {tool_name}")
+            # For tools that need proxy, we'll handle it in the command itself
+            # The proxy is already added to the command for katana
+            exit_code, stdout, stderr = run_command(cmd, timeout=config['timeouts']['command'])
+        else:
+            # For tools that don't use proxy (gau, waybackurls), clear environment variables
+            logger.debug(f"Running {tool_name} without proxy")
+            import os
+            original_http_proxy = os.environ.get('HTTP_PROXY')
+            original_https_proxy = os.environ.get('HTTPS_PROXY')
+            
+            try:
+                # Clear proxy environment variables for this tool
+                if 'HTTP_PROXY' in os.environ:
+                    del os.environ['HTTP_PROXY']
+                if 'HTTPS_PROXY' in os.environ:
+                    del os.environ['HTTPS_PROXY']
+                
+                exit_code, stdout, stderr = run_command(cmd, timeout=config['timeouts']['command'])
+            finally:
+                # Restore original environment variables
+                if original_http_proxy:
+                    os.environ['HTTP_PROXY'] = original_http_proxy
+                if original_https_proxy:
+                    os.environ['HTTPS_PROXY'] = original_https_proxy
         
         if exit_code == 0 and stdout:
             urls = set(stdout.splitlines())
@@ -52,19 +88,40 @@ def run(args: Any, config: Dict, logger: Logger, workflow_data: Dict) -> Dict:
     
     logger.info(f"Gathering URLs for '{target}' using mode '{gather_mode}'...")
     
-    # Define tool configurations
-    tool_map = {
-        'w': ("waybackurls", ["waybackurls", target]),
-        'g': ("gau", ["gau", "--subs", target]),
-        'k': ("katana", ["katana", "-u", f"https://{target}", "-jc", "-d", str(args.depth), "-silent"])
-    }
+    # Check if proxy is enabled
+    proxy_enabled = hasattr(args, 'proxy') and args.proxy
+    proxy_url = args.proxy if proxy_enabled else None
+    
+    if proxy_enabled:
+        logger.info(f"Proxy enabled: {proxy_url}")
+        logger.info("gau and waybackurls will run without proxy")
+        logger.info(f"katana will use proxy parameter: {proxy_url}")
+    
+    # Define tool configurations with proxy handling
+    def get_tool_config(tool_char: str, target: str, depth: int, proxy_url: str = None) -> tuple:
+        """Get tool configuration with appropriate proxy settings"""
+        if tool_char == 'w':
+            # waybackurls - no proxy
+            return ("waybackurls", ["waybackurls", target], False, None)
+        elif tool_char == 'g':
+            # gau - no proxy
+            return ("gau", ["gau", "--subs", target], False, None)
+        elif tool_char == 'k':
+            # katana - with proxy parameter
+            if proxy_url:
+                return ("katana", ["katana", "-u", f"https://{target}", "-jc", "-d", str(depth), "-proxy", proxy_url, "-silent"], True, proxy_url)
+            else:
+                return ("katana", ["katana", "-u", f"https://{target}", "-jc", "-d", str(depth), "-silent"], False, None)
+        else:
+            return None
     
     # Filter tools based on gather mode
     tools_to_run = []
     for tool_char in gather_mode:
-        if tool_char in tool_map:
-            tool_name, cmd = tool_map[tool_char]
-            tools_to_run.append((tool_name, cmd))
+        tool_config = get_tool_config(tool_char, target, args.depth, proxy_url)
+        if tool_config:
+            tool_name, cmd, use_proxy, tool_proxy_url = tool_config
+            tools_to_run.append((tool_name, cmd, use_proxy, tool_proxy_url))
     
     if not tools_to_run:
         logger.warning(f"No valid tools found in gather mode '{gather_mode}'")
@@ -74,8 +131,8 @@ def run(args: Any, config: Dict, logger: Logger, workflow_data: Dict) -> Dict:
     if len(tools_to_run) == 1:
         # Single tool - run sequentially (no benefit from concurrency)
         logger.info(f"Running single tool: {tools_to_run[0][0]}")
-        tool_name, cmd = tools_to_run[0]
-        result_tool_name, result_urls = run_tool_concurrent(tool_name, cmd, config, logger, target_output_dir)
+        tool_name, cmd, use_proxy, tool_proxy_url = tools_to_run[0]
+        result_tool_name, result_urls = run_tool_concurrent(tool_name, cmd, config, logger, target_output_dir, use_proxy, tool_proxy_url)
         all_urls = result_urls
         
     else:
@@ -88,8 +145,8 @@ def run(args: Any, config: Dict, logger: Logger, workflow_data: Dict) -> Dict:
         with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
             # Submit all tool tasks
             future_to_tool = {
-                executor.submit(run_tool_concurrent, tool_name, cmd, config, logger, target_output_dir): tool_name
-                for tool_name, cmd in tools_to_run
+                executor.submit(run_tool_concurrent, tool_name, cmd, config, logger, target_output_dir, use_proxy, tool_proxy_url): tool_name
+                for tool_name, cmd, use_proxy, tool_proxy_url in tools_to_run
             }
             
             # Collect results as they complete
@@ -163,33 +220,84 @@ async def run_async(args: Any, config: Dict, logger: Logger, workflow_data: Dict
     
     logger.info(f"Gathering URLs for '{target}' using async mode '{gather_mode}'...")
     
-    tool_map = {
-        'w': ("waybackurls", ["waybackurls", target]),
-        'g': ("gau", ["gau", "--subs", target]),
-        'k': ("katana", ["katana", "-u", f"https://{target}", "-jc", "-d", str(args.depth), "-silent"])
-    }
+    # Check if proxy is enabled
+    proxy_enabled = hasattr(args, 'proxy') and args.proxy
+    proxy_url = args.proxy if proxy_enabled else None
+    
+    if proxy_enabled:
+        logger.info(f"Proxy enabled: {proxy_url}")
+        logger.info("gau and waybackurls will run without proxy")
+        logger.info(f"katana will use proxy parameter: {proxy_url}")
+    
+    # Define tool configurations with proxy handling
+    def get_tool_config(tool_char: str, target: str, depth: int, proxy_url: str = None) -> tuple:
+        """Get tool configuration with appropriate proxy settings"""
+        if tool_char == 'w':
+            # waybackurls - no proxy
+            return ("waybackurls", ["waybackurls", target], False, None)
+        elif tool_char == 'g':
+            # gau - no proxy
+            return ("gau", ["gau", "--subs", target], False, None)
+        elif tool_char == 'k':
+            # katana - with proxy parameter
+            if proxy_url:
+                return ("katana", ["katana", "-u", f"https://{target}", "-jc", "-d", str(depth), "-proxy", proxy_url, "-silent"], True, proxy_url)
+            else:
+                return ("katana", ["katana", "-u", f"https://{target}", "-jc", "-d", str(depth), "-silent"], False, None)
+        else:
+            return None
     
     tools_to_run = []
     for tool_char in gather_mode:
-        if tool_char in tool_map:
-            tool_name, cmd = tool_map[tool_char]
-            tools_to_run.append((tool_name, cmd))
+        tool_config = get_tool_config(tool_char, target, args.depth, proxy_url)
+        if tool_config:
+            tool_name, cmd, use_proxy, tool_proxy_url = tool_config
+            tools_to_run.append((tool_name, cmd, use_proxy, tool_proxy_url))
     
     if not tools_to_run:
         logger.warning(f"No valid tools found in gather mode '{gather_mode}'")
         return {"all_urls": set()}
     
-    async def run_tool_async(tool_name: str, cmd: List[str]) -> Tuple[str, Set[str]]:
-        """Async version of tool execution"""
+    async def run_tool_async(tool_name: str, cmd: List[str], use_proxy: bool = False, proxy_url: str = None) -> Tuple[str, Set[str]]:
+        """Async version of tool execution with proxy handling"""
         try:
             logger.info(f"Running {tool_name}...")
             
-            # Run command in thread pool to avoid blocking
-            loop = asyncio.get_event_loop()
-            exit_code, stdout, stderr = await loop.run_in_executor(
-                None, 
-                lambda: run_command(cmd, timeout=config['timeouts']['command'])
-            )
+            # Handle proxy configuration for different tools
+            if use_proxy and proxy_url:
+                logger.debug(f"Using proxy {proxy_url} for {tool_name}")
+                # For tools that need proxy, we'll handle it in the command itself
+                # The proxy is already added to the command for katana
+                loop = asyncio.get_event_loop()
+                exit_code, stdout, stderr = await loop.run_in_executor(
+                    None, 
+                    lambda: run_command(cmd, timeout=config['timeouts']['command'])
+                )
+            else:
+                # For tools that don't use proxy (gau, waybackurls), clear environment variables
+                logger.debug(f"Running {tool_name} without proxy")
+                import os
+                original_http_proxy = os.environ.get('HTTP_PROXY')
+                original_https_proxy = os.environ.get('HTTPS_PROXY')
+                
+                try:
+                    # Clear proxy environment variables for this tool
+                    if 'HTTP_PROXY' in os.environ:
+                        del os.environ['HTTP_PROXY']
+                    if 'HTTPS_PROXY' in os.environ:
+                        del os.environ['HTTPS_PROXY']
+                    
+                    loop = asyncio.get_event_loop()
+                    exit_code, stdout, stderr = await loop.run_in_executor(
+                        None, 
+                        lambda: run_command(cmd, timeout=config['timeouts']['command'])
+                    )
+                finally:
+                    # Restore original environment variables
+                    if original_http_proxy:
+                        os.environ['HTTP_PROXY'] = original_http_proxy
+                    if original_https_proxy:
+                        os.environ['HTTPS_PROXY'] = original_https_proxy
             
             if exit_code == 0 and stdout:
                 urls = set(stdout.splitlines())
@@ -216,7 +324,7 @@ async def run_async(args: Any, config: Dict, logger: Logger, workflow_data: Dict
             return tool_name, set()
     
     # Run all tools concurrently
-    tasks = [run_tool_async(tool_name, cmd) for tool_name, cmd in tools_to_run]
+    tasks = [run_tool_async(tool_name, cmd, use_proxy, tool_proxy_url) for tool_name, cmd, use_proxy, tool_proxy_url in tools_to_run]
     results = await asyncio.gather(*tasks, return_exceptions=True)
     
     # Combine results
@@ -230,17 +338,18 @@ async def run_async(args: Any, config: Dict, logger: Logger, workflow_data: Dict
             tool_name, urls = result
             all_urls.update(urls)
             completed_tools.append(tool_name)
-            logger.info(f"Completed {tool_name} ({len(urls)} URLs)")
     
-    # Save combined results to target output directory
+    # Save combined results
     total_found = len(all_urls)
     if total_found > 0:
         all_urls_file = config['files'].get('all_urls', 'all_urls.txt')
         write_lines_to_file(target_output_dir / all_urls_file, all_urls)
-        logger.success(f"Async discovery complete. Found {total_found} unique URLs for '{target}'.")
-        logger.info(f"Tools completed: {', '.join(completed_tools)}")
+        
+        logger.success(f"Discovery complete. Found a total of {total_found} unique URLs for '{target}'.")
+        if len(tools_to_run) > 1:
+            logger.info(f"Tools completed: {', '.join(completed_tools)}")
     else:
-        logger.warning(f"Async discovery complete. No URLs found for '{target}'.")
+        logger.warning(f"Discovery complete. No URLs found for '{target}'.")
     
     return {"all_urls": all_urls}
 
