@@ -32,39 +32,24 @@ def show_help_minimal():
     console.print("  param-passive  - Extract parameters")
     console.print("  fallparams     - Dynamic parameter discovery")
     console.print("  sqli           - SQL injection reconnaissance")
-    console.print("  github         - GitHub secrets scanning")
-    console.print("  gitlab         - GitLab secrets scanning")
-    console.print("  bitbucket      - Bitbucket secrets scanning")
-    console.print("  gitea          - Gitea secrets scanning")
+    console.print("  code host search - GitHub, GitLab, Bitbucket, Gitea scanning")
     console.print("  reporting      - Generate reports")
     console.print()
     
-    console.print("CORE OPTIONS:")
+    console.print("OPTIONS:")
     console.print("  -t, --target           Target domain or URL")
-    console.print("  --targets-file         File with multiple targets")
+    console.print("  --targets-file         File with multiple targets (one per line)")
     console.print("  -o, --output           Output directory (default: ./output)")
     console.print("  --env                  Environment: dev/prod/test (default: dev)")
     console.print("  --independent          Run single module mode")
     console.print("  --input                Input file for independent mode")
     console.print("  --command-timeout      Override command timeout")
-    console.print()
-    
-    console.print("ENVIRONMENT OPTIONS:")
-    console.print("  --env development      Fast scans, minimal timeouts, debug logging")
-    console.print("  --env production       Optimized for real-world scanning, extended timeouts")
-    console.print("  --env testing          Minimal resource usage, quick validation")
-    console.print()
-    
-    console.print("DISCOVERY OPTIONS:")
     console.print("  --gather-mode          Tools: g=gau, w=wayback, k=katana (default: gwk)")
     console.print("  -d, --depth            Katana crawl depth (default: 2)")
     console.print("  --uro                  Use uro for URL deduplication")
-    console.print()
-    
-    console.print("PROXY OPTIONS:")
     console.print("  --proxy                Proxy URL (socks5://127.0.0.1:40000)")
-    console.print("  --proxy-auth           Proxy authentication")
-    console.print("  --no-proxy             Hosts to bypass proxy")
+    console.print("  -v, --verbose          Enable verbose logging")
+    console.print("  -q, --quiet            Suppress console output")
     console.print()
     
     console.print("EXAMPLES:")
@@ -182,7 +167,7 @@ def show_help():
     fuzzing_table.add_column("Description")
     fuzzing_options = {
         '--fuzz-mode': 'Fuzzing mode: wordlist, permutation, both, off (default: off).',
-        '--fuzz-wordlist': 'Custom wordlist for fuzzing.'
+        '--fuzz-wordlist': 'Custom wordlist for fuzzing (required for wordlist/both modes).'
     }
     for opt, desc in fuzzing_options.items():
         fuzzing_table.add_row(opt, desc)
@@ -223,11 +208,17 @@ def show_help():
 [bold]1. Full Workflow (All Modules):[/bold]
 [cyan]python run_workflow.py discovery validation processing download analysis fuzzingjs param-passive fallparams sqli github reporting -t example.com[/cyan]
 
-[bold]2. Large Target with Proxy:[/bold]
+[bold]2. Large Target with Proxy & Production:[/bold]
 [cyan]python run_workflow.py discovery -t large-target.com --proxy socks5://127.0.0.1:40000 --env production --command-timeout 7200[/cyan]
 
-[bold]3. Independent Mode with Environment:[/bold]
-[cyan]python run_workflow.py discovery --independent --input urls.txt --env development[/cyan]
+[bold]3. Custom Discovery & Fuzzing:[/bold]
+[cyan]python run_workflow.py discovery validation processing fuzzingjs -t example.com --gather-mode gk --depth 3 --fuzz-mode both --fuzz-wordlist custom_words.txt[/cyan]
+
+[bold]4. SQL Injection & Independent Mode:[/bold]
+[cyan]python run_workflow.py sqli --independent --input urls.txt --sqli-scanner ghauri --sqli-full-scan --env development[/cyan]
+
+[bold]5. Verbose Debug & Multiple Targets:[/bold]
+[cyan]python run_workflow.py discovery validation --targets-file targets.txt -v --timestamp-format "%Y-%m-%d %H:%M:%S" --uro[/cyan]
     """, title="[bold green]Quick Examples[/bold green]", border_style="green")
     console.print(quick_examples_panel)
 
@@ -280,6 +271,128 @@ def show_help_extended():
 • Partial output preservation on timeout
     """, title="[bold blue]Key Features[/bold blue]", border_style="blue")
     console.print(features_panel)
+
+    # Commands (from -hh)
+    cmd_table = Table(title="[bold yellow]Workflow Commands[/bold yellow]", box=box.ROUNDED)
+    cmd_table.add_column("Command", style="cyan", no_wrap=True)
+    cmd_table.add_column("Description")
+    commands = {
+        'discovery': 'Discovers JavaScript URLs from various sources (gau, waybackurls, katana).',
+        'validation': 'Validates discovered URLs are live and accessible.',
+        'processing': 'Deduplicates URLs based on content hash.',
+        'download': 'Downloads JavaScript files asynchronously (supports multiple extensions).',
+        'analysis': 'Analyzes downloaded files for secrets and endpoints.',
+        'fuzzingjs': 'Performs directory and file fuzzing with configurable patterns.',
+        'param-passive': 'Extracts parameters and important file types.',
+        'fallparams': 'Performs dynamic parameter discovery on key URLs.',
+        'sqli': 'Performs SQL injection reconnaissance with configurable detection patterns.',
+        'github': 'Scans GitHub for repositories, secrets, and useful data.',
+        'gitlab': 'Scans GitLab for repositories, secrets, and useful data.',
+        'bitbucket': 'Scans Bitbucket for repositories, secrets, and useful data.',
+        'gitea': 'Scans Gitea for repositories, secrets, and useful data.',
+        'reporting': 'Generates comprehensive reports from all module results.'
+    }
+    for cmd, desc in commands.items():
+        cmd_table.add_row(cmd, desc)
+    console.print(cmd_table)
+
+    # Core Options (from -hh)
+    core_table = Table(title="[bold blue]Core Options[/bold blue]", box=box.SIMPLE)
+    core_table.add_column("Option", style="cyan", no_wrap=True)
+    core_table.add_column("Description")
+    core_options = {
+        '-t, --target': 'Target domain or URL to scan.',
+        '--targets-file': 'File with multiple targets (one per line).',
+        '-o, --output': 'Base output directory (default: ./output).',
+        '--env': 'Configuration environment: development, production, testing (default: development).',
+        '--independent': 'Run a single module independently (requires --input).',
+        '--input': 'Input file for independent mode.',
+        '--command-timeout': 'Override command timeout in seconds (default: from config).'
+    }
+    for opt, desc in core_options.items():
+        core_table.add_row(opt, desc)
+    console.print(core_table)
+
+    # Environment Options (from -hh)
+    env_table = Table(title="[bold green]Environment Options[/bold green]", box=box.SIMPLE)
+    env_table.add_column("Environment", style="cyan", no_wrap=True)
+    env_table.add_column("Description")
+    env_options = {
+        'development': 'Fast scans, minimal timeouts, debug logging. Best for testing and development.',
+        'production': 'Optimized for real-world scanning, extended timeouts, high concurrency.',
+        'testing': 'Minimal resource usage, quick validation, reduced timeouts for testing.'
+    }
+    for env, desc in env_options.items():
+        env_table.add_row(env, desc)
+    console.print(env_table)
+
+    # Discovery Options (from -hh)
+    discovery_table = Table(title="[bold green]Discovery Options[/bold green]", box=box.SIMPLE)
+    discovery_table.add_column("Option", style="cyan", no_wrap=True)
+    discovery_table.add_column("Description")
+    discovery_options = {
+        '--gather-mode': 'Tools to use for discovery: g=gau, w=waybackurls, k=katana (default: gwk).',
+        '-d, --depth': 'Katana crawl depth (default: 2).',
+        '--uro': 'Use uro to deduplicate/shorten URLs after discovery.'
+    }
+    for opt, desc in discovery_options.items():
+        discovery_table.add_row(opt, desc)
+    console.print(discovery_table)
+
+    # Proxy Options (from -hh)
+    proxy_table = Table(title="[bold magenta]Proxy Options[/bold magenta]", box=box.SIMPLE)
+    proxy_table.add_column("Option", style="cyan", no_wrap=True)
+    proxy_table.add_column("Description")
+    proxy_options = {
+        '--proxy': 'Proxy URL (e.g., socks5://127.0.0.1:40000, http://proxy:8080).',
+        '--proxy-auth': 'Proxy authentication (username:password).',
+        '--no-proxy': 'Comma-separated list of hosts to bypass proxy.',
+        '--proxy-timeout': 'Proxy connection timeout in seconds (default: 30).',
+        '--proxy-verify-ssl': 'Verify SSL certificates when using proxy.'
+    }
+    for opt, desc in proxy_options.items():
+        proxy_table.add_row(opt, desc)
+    console.print(proxy_table)
+
+    # Fuzzing Options (from -hh)
+    fuzzing_table = Table(title="[bold yellow]Fuzzing Options[/bold yellow]", box=box.SIMPLE)
+    fuzzing_table.add_column("Option", style="cyan", no_wrap=True)
+    fuzzing_table.add_column("Description")
+    fuzzing_options = {
+        '--fuzz-mode': 'Fuzzing mode: wordlist, permutation, both, off (default: off).',
+        '--fuzz-wordlist': 'Custom wordlist for fuzzing.'
+    }
+    for opt, desc in fuzzing_options.items():
+        fuzzing_table.add_row(opt, desc)
+    console.print(fuzzing_table)
+
+    # SQLi Options (from -hh)
+    sqli_table = Table(title="[bold red]SQL Injection Options[/bold red]", box=box.SIMPLE)
+    sqli_table.add_column("Option", style="cyan", no_wrap=True)
+    sqli_table.add_column("Description")
+    sqli_options = {
+        '--sqli-scanner': 'SQLi scanner to use: sqlmap, ghauri (default: sqlmap).',
+        '--sqli-full-scan': 'Run full SQLi scan including automated scanning.',
+        '--sqli-manual-blind': 'Run manual blind SQLi test (time-based) - DEFAULT MODE.',
+        '--sqli-header-test': 'Run header-based blind SQLi test.',
+        '--sqli-xor-test': 'Run XOR blind SQLi test.'
+    }
+    for opt, desc in sqli_options.items():
+        sqli_table.add_row(opt, desc)
+    console.print(sqli_table)
+
+    # Logging Options (from -hh)
+    logging_table = Table(title="[bold cyan]Logging Options[/bold cyan]", box=box.SIMPLE)
+    logging_table.add_column("Option", style="cyan", no_wrap=True)
+    logging_table.add_column("Description")
+    logging_options = {
+        '-v, --verbose': 'Enable verbose (DEBUG level) logging.',
+        '-q, --quiet': 'Suppress console output except for warnings/errors.',
+        '--timestamp-format': 'Timestamp format for console output (default: %H:%M:%S).'
+    }
+    for opt, desc in logging_options.items():
+        logging_table.add_row(opt, desc)
+    console.print(logging_table)
 
     # Environment Configuration
     env_panel = Panel("""
@@ -490,18 +603,18 @@ def show_command_help(command: str):
         },
         'validation': {
             'description': 'Validates discovered URLs to ensure they are live and accessible.',
-            'output': 'validated_urls.txt',
+            'output': 'live_js_urls.txt',
             'options': {
                 '--proxy': 'Use proxy for validation requests',
-                '--timeout': 'Request timeout in seconds'
+                '--env': 'Environment affects concurrency and timeouts'
             }
         },
         'processing': {
             'description': 'Deduplicates URLs based on content hash to remove duplicates.',
-            'output': 'unique_urls.txt',
+            'output': 'deduplicated_js_urls.txt',
             'options': {
                 '--proxy': 'Use proxy for content downloads',
-                '--hash-algorithm': 'Hash algorithm to use (default: md5)'
+                '--env': 'Environment affects download timeouts and concurrency'
             }
         },
         'download': {
@@ -510,40 +623,40 @@ def show_command_help(command: str):
             'configurable': 'File extensions in config/download.allowed_extensions',
             'options': {
                 '--proxy': 'Use proxy for downloads',
-                '--concurrent': 'Number of concurrent downloads'
+                '--env': 'Environment affects concurrency and timeouts'
             }
         },
         'analysis': {
             'description': 'Analyzes downloaded JavaScript files for secrets and endpoints.',
-            'output': 'analysis_results.json',
-            'tools': ['linkfinder', 'secretfinder', 'custom patterns'],
+            'output': 'results/ (with tool-specific subdirectories)',
+            'tools': ['linkfinder', 'secretfinder', 'jsluice', 'trufflehog'],
             'options': {
-                '--patterns': 'Custom regex patterns file',
-                '--output-format': 'Output format (json, txt)'
+                '--env': 'Environment affects max workers and timeouts'
             }
         },
         'fuzzingjs': {
             'description': 'Performs directory and file fuzzing with configurable patterns.',
-            'output': 'fuzzed_urls.txt',
+            'output': 'fuzzing_all_urls.txt, fuzzing_new_urls.txt',
             'configurable': 'Patterns in config/enumeration (prefixes, suffixes, separators)',
             'options': {
                 '--fuzz-mode': 'Fuzzing mode (wordlist, permutation, both, off)',
-                '--fuzz-wordlist': 'Custom wordlist for fuzzing'
+                '--fuzz-wordlist': 'Custom wordlist for fuzzing (required for wordlist/both)',
+                '--env': 'Environment affects threads and timeouts'
             }
         },
         'param-passive': {
             'description': 'Extracts parameters and important file types from discovered URLs.',
-            'output': 'parameters.txt',
+            'output': 'param_passive/important_file_urls.txt, parameters.txt',
             'configurable': 'Important extensions in config/param_passive.important_extensions',
             'options': {
-                '--extensions': 'File extensions to extract parameters from'
+                '--env': 'Environment affects processing timeouts'
             }
         },
         'fallparams': {
             'description': 'Performs dynamic parameter discovery on key URLs.',
-            'output': 'dynamic_parameters.txt',
+            'output': 'fallparams_results/',
             'options': {
-                '--wordlist': 'Parameter wordlist to use'
+                '--env': 'Environment affects processing timeouts'
             }
         },
         'sqli': {
@@ -554,7 +667,10 @@ def show_command_help(command: str):
             'options': {
                 '--sqli-scanner': 'Scanner to use (sqlmap, ghauri)',
                 '--sqli-full-scan': 'Run full automated scan',
-                '--sqli-manual-blind': 'Run manual blind tests'
+                '--sqli-manual-blind': 'Run manual blind tests',
+                '--sqli-header-test': 'Run header-based tests',
+                '--sqli-xor-test': 'Run XOR-based tests',
+                '--env': 'Environment affects timeouts and scanning depth'
             }
         },
         'github': {
@@ -562,40 +678,35 @@ def show_command_help(command: str):
             'output': 'github_results/',
             'tools': ['trufflehog', 'gitleaks', 'gitrob'],
             'options': {
-                '--api-token': 'GitHub API token',
-                '--org-scan': 'Scan organization repositories'
+                '--env': 'Environment affects scanning depth and timeouts'
             }
         },
         'gitlab': {
             'description': 'Scans GitLab for repositories, secrets, and useful data.',
             'output': 'gitlab_results/',
             'options': {
-                '--api-token': 'GitLab API token',
-                '--instance': 'GitLab instance URL'
+                '--env': 'Environment affects scanning depth and timeouts'
             }
         },
         'bitbucket': {
             'description': 'Scans Bitbucket for repositories, secrets, and useful data.',
             'output': 'bitbucket_results/',
             'options': {
-                '--api-token': 'Bitbucket API token',
-                '--workspace': 'Bitbucket workspace'
+                '--env': 'Environment affects scanning depth and timeouts'
             }
         },
         'gitea': {
             'description': 'Scans Gitea for repositories, secrets, and useful data.',
             'output': 'gitea_results/',
             'options': {
-                '--api-token': 'Gitea API token',
-                '--instance': 'Gitea instance URL'
+                '--env': 'Environment affects scanning depth and timeouts'
             }
         },
         'reporting': {
             'description': 'Generates comprehensive reports from all module results.',
             'output': 'reports/',
             'options': {
-                '--format': 'Report format (html, json, txt)',
-                '--template': 'Custom report template'
+                '--env': 'Environment affects report generation options'
             }
         }
     }
