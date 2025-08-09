@@ -9,6 +9,7 @@ class Colors:
     YELLOW = '\033[1;33m'
     BLUE = '\033[0;34m'
     CYAN = '\033[0;36m'
+    MAGENTA = '\033[0;35m'  # Added magenta for commands
     NC = '\033[0m' # No Color
 
 class Logger:
@@ -48,6 +49,7 @@ class Logger:
         self.color_map = {
             'DEBUG': Colors.NC,
             'INFO': Colors.CYAN,
+            'COMMAND': Colors.MAGENTA,  # Added command color
             'SUCCESS': Colors.GREEN,
             'WARNING': Colors.YELLOW,
             'ERROR': Colors.RED,
@@ -75,6 +77,11 @@ class Logger:
     def info(self, message: str):
         self.logger.info(message)
         self._log_to_console('INFO', message)
+        
+    def command(self, message: str):
+        # 'COMMAND' is a custom level. We log it as INFO to the file.
+        self.logger.info(f"COMMAND: {message}")
+        self._log_to_console('COMMAND', message)
         
     def success(self, message: str):
         # 'SUCCESS' is a custom level. We log it as INFO to the file.

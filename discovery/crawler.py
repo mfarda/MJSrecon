@@ -25,7 +25,7 @@ def run_tool_concurrent(tool_name: str, cmd: List[str], config: Dict, logger: Lo
     """
     try:
         logger.info(f"Running {tool_name}...")
-        logger.info(f"Command: {' '.join(cmd)}")
+        logger.command(f"Command: {' '.join(cmd)}")
         
         # Handle proxy configuration for different tools
         if use_proxy and proxy_url:
@@ -267,7 +267,7 @@ async def run_async(args: Any, config: Dict, logger: Logger, workflow_data: Dict
         """Async version of tool execution with proxy handling"""
         try:
             logger.info(f"Running {tool_name}...")
-            logger.info(f"Command: {' '.join(cmd)}")
+            logger.command(f"Command: {' '.join(cmd)}")
             
             # Handle proxy configuration for different tools
             if use_proxy and proxy_url:
