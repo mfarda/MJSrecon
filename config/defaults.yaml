@@ -1,0 +1,132 @@
+# MJSRecon Default Configuration
+# This file contains default configuration values for all modules
+
+# Global Tools Configuration
+tools:
+  required:
+    - "waybackurls"
+    - "gau"
+    - "katana"
+    - "httpx"
+    - "unfurl"
+    - "fallparams"
+    - "gf"
+  full_mode:
+    - "jsluice"
+    - "trufflehog"
+  python_tools:
+    secretfinder: "src/tools/secretfinder.py"
+    linkfinder: "src/tools/linkfinder.py"
+
+# Proxy Configuration
+proxy:
+  enabled: false
+  url: null
+  auth: null
+  no_proxy: null
+  timeout: 30
+  verify_ssl: false
+
+# Files used across modules
+files:
+  live_js: "live_js_urls.txt"
+  deduplicated_js: "deduplicated_js_urls.txt"
+  all_urls: "all_urls.txt"
+  uro_urls: "uro_urls.txt"
+  fuzzing_all: "fuzzing_all_urls.txt"
+  fuzzing_new: "fuzzing_new_urls.txt"
+  permutation_wordlist: "fuzz_permutations.txt"
+  sqli_targets: "sqli_targets.txt"
+  waybackurls_urls: "waybackurls_urls.txt"
+  waybackurls_filtered: "waybackurls_filtered_urls.txt"
+  gau_urls: "gau_urls.txt"
+  gau_filtered: "gau_filtered_urls.txt"
+  katana_urls: "katana_urls.txt"
+  katana_filtered: "katana_filtered_urls.txt"
+
+# Directories used across modules
+dirs:
+  downloaded_files: "downloaded_files"
+  results: "results"
+  ffuf_results: "ffuf_results"
+  sqli_results: "sqli_results"
+  param_passive: "param_passive"
+  fallparams_results: "fallparams_results"
+
+# Timeouts for various operations
+timeouts:
+  command: 300
+  download: 60
+  analysis: 300
+  verify: 30
+
+# Discovery Module Configuration
+discovery:
+  gather_mode: "gwk"  # g=gau, w=wayback, k=katana
+  depth: 2
+  use_uro: false
+
+# Validation Module Configuration
+validation:
+  max_workers: 10
+  timeout: 30
+  verify_ssl: false
+
+# Processing Module Configuration
+processing:
+  max_file_size_mb: 10
+  download_timeout: 30
+  max_concurrent_downloads: 10
+
+# Download Module Configuration
+download:
+  max_file_size_mb: 10
+  timeout: 30
+  max_concurrent: 10
+  allowed_extensions:
+    - ".js"
+    - ".jsx"
+    - ".ts"
+    - ".tsx"
+    - ".vue"
+    - ".json"
+
+# Analysis Module Configuration
+analysis:
+  max_workers: 4
+  max_file_size_mb: 10
+
+# Enumeration / Fuzzing Configuration
+enumeration:
+  fuzz_threads: 10
+  fuzz_timeout: 30
+
+# Parameter Extraction Configuration
+param_passive:
+  important_extensions:
+    - ".js"
+    - ".json"
+    - ".map"
+
+# Parameter Enumeration Configuration
+fallparams:
+  threads: 10
+
+# SQL Injection Configuration
+sqli:
+  scanner: "sqlmap"  # sqlmap, ghauri
+  full_scan: false
+  manual_blind: true
+  header_test: false
+  xor_test: false
+  timeout: 300
+  delay_threshold: 3
+  sqlmap_args: "--batch --random-agent --level=2 --risk=1"
+  ghauri_args: "--batch --random-agent" 
+
+# Reporting Configuration
+reporting:
+  generate_html: true
+  generate_json: true
+  generate_markdown: true
+  include_timestamps: true 

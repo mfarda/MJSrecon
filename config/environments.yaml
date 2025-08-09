@@ -1,0 +1,116 @@
+# Environment-Specific Configuration
+# This file contains configuration overrides for different environments
+
+# Development Environment
+development:
+  proxy:
+    enabled: false
+    timeout: 10
+  
+  discovery:
+    depth: 1
+    gather_mode: "gw"  # Only gau and waybackurls
+  
+  processing:
+    max_concurrent_downloads: 5
+    max_file_size_mb: 5
+  
+  download:
+    max_concurrent_downloads: 5
+    max_file_size_mb: 5
+  
+  github_scanner:
+    max_repos_to_scan: 2
+    max_search_results: 100
+    cache_ttl: 1800  # 30 minutes
+  
+  gitlab_scanner:
+    max_repos_to_scan: 2
+    max_search_results: 100
+    cache_ttl: 1800
+  
+  bitbucket_scanner:
+    max_repos_to_scan: 2
+    max_search_results: 100
+    cache_ttl: 1800
+  
+  gitea_scanner:
+    max_repos_to_scan: 2
+    max_search_results: 100
+    cache_ttl: 1800
+
+# Production Environment
+production:
+  proxy:
+    enabled: true
+    timeout: 60
+  
+  discovery:
+    depth: 3
+    gather_mode: "gwk"  # All tools
+  
+  processing:
+    max_concurrent_downloads: 20
+    max_file_size_mb: 50
+  
+  download:
+    max_concurrent_downloads: 20
+    max_file_size_mb: 50
+  
+  github_scanner:
+    max_repos_to_scan: 10
+    max_search_results: 2000
+    cache_ttl: 7200  # 2 hours
+  
+  gitlab_scanner:
+    max_repos_to_scan: 10
+    max_search_results: 2000
+    cache_ttl: 7200
+  
+  bitbucket_scanner:
+    max_repos_to_scan: 10
+    max_search_results: 2000
+    cache_ttl: 7200
+  
+  gitea_scanner:
+    max_repos_to_scan: 10
+    max_search_results: 2000
+    cache_ttl: 7200
+
+# Testing Environment
+testing:
+  proxy:
+    enabled: false
+    timeout: 5
+  
+  discovery:
+    depth: 1
+    gather_mode: "g"  # Only gau
+  
+  processing:
+    max_concurrent_downloads: 2
+    max_file_size_mb: 1
+  
+  download:
+    max_concurrent_downloads: 2
+    max_file_size_mb: 1
+  
+  github_scanner:
+    max_repos_to_scan: 1
+    max_search_results: 10
+    cache_ttl: 300  # 5 minutes
+  
+  gitlab_scanner:
+    max_repos_to_scan: 1
+    max_search_results: 10
+    cache_ttl: 300
+  
+  bitbucket_scanner:
+    max_repos_to_scan: 1
+    max_search_results: 10
+    cache_ttl: 300
+  
+  gitea_scanner:
+    max_repos_to_scan: 1
+    max_search_results: 10
+    cache_ttl: 300 

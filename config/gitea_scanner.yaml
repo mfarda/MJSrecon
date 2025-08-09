@@ -1,0 +1,72 @@
+# Gitea Scanner Configuration
+# This file contains Gitea-specific configuration settings
+
+# Gitea API Configuration
+api_token_env: "GITEA_TOKEN"  # Environment variable name for Gitea API token
+gitea_url_env: "GITEA_URL"    # Environment variable name for Gitea URL (default: https://gitea.com)
+rate_limit_wait: 60  # Seconds to wait when rate limited
+
+# Tool Selection and Configuration
+enabled_tools:
+  trufflehog: true
+  gitleaks: true
+  custom_patterns: true
+
+# Scanning Configuration
+max_repos_to_scan: 4     # Maximum number of repositories to clone and scan
+max_file_size_mb: 10     # Maximum file size to scan (in MB)
+clone_timeout: 300       # Timeout for git clone operations (seconds)
+scan_timeout: 600        # Timeout for scanning operations (seconds)
+
+# Search Configuration
+search_per_page: 100       # Number of results per Gitea API page
+max_search_results: 1000   # Maximum total search results to process
+
+# Basic Search Queries (uncomment to enable)
+search_queries:
+  # Basic searches
+  - '"{target}"'
+  - 'org:{target}'
+  - 'user:{target}'            
+  - '{target}'
+  - '"{target}" language:javascript'
+  - '"{target}" language:python'
+  - '"{target}" language:go'
+  - '"{target}" language:java'
+  
+  # Category 1: Credential & Secret Leakage (uncomment to enable)
+  # - 'org:"{target}" "aws_access_key_id"'
+  # - 'org:"{target}" "aws_secret_access_key"'
+  # - 'org:"{target}" "Authorization: Bearer"'
+  # - 'org:"{target}" "slack_token" path:*.json'
+  # - 'org:"{target}" "http://firebaseio.com"'
+  # - 'org:"{target}" "access_token" path:*.json'
+  # - 'org:"{target}" "client_secret" path:*.yaml'
+  # - 'org:"{target}" "DATABASE_URL" path:*.env'
+  # - 'org:"{target}" "jwt_token" path:*.json'
+  # - 'org:"{target}" "sendgrid_api_key"'
+  
+  # Category 2: Internal Config & CI/CD (uncomment to enable)
+  # - 'org:"{target}" path:**/.env'
+  # - 'org:"{target}" path:**/config.js'
+  # - 'org:"{target}" path:**/docker-compose.yml'
+  # - 'org:"{target}" path:**/config.yaml'
+  # - 'org:"{target}" path:**/sshd_config'
+  # - 'org:"{target}" path:**/.gitea/workflows'
+  # - 'org:"{target}" path:**/host.json language:json'
+  # - 'org:"{target}" "DATABASE_PASSWORD" path:*.properties'
+  # - 'org:"{target}" "service_account" path:*.json'
+
+# Output Configuration
+save_repositories: true    # Save repository information
+save_secrets: true         # Save found secrets
+save_useful_data: true     # Save useful data analysis
+save_organizations: true   # Save organization information
+save_users: true           # Save user information
+generate_report: true      # Generate markdown summary report
+
+# Performance Configuration
+max_concurrent_repos: 3    # Max concurrent repository processing
+max_concurrent_scans: 4    # Max concurrent scans per repo
+cache_enabled: true        # Enable API response caching
+cache_ttl: 3600           # Cache TTL in seconds (1 hour) 

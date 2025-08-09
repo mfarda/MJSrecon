@@ -1,0 +1,87 @@
+# Secret Detection Patterns Configuration
+# This file contains regex patterns for detecting secrets and sensitive data
+
+# API Keys and Tokens
+api_keys:
+  - '[aA][pP][iI][-_]?[kK][eE][yY].*[\'"][0-9a-zA-Z]{32,45}[\'"]'
+  - '[aA][pP][iI][-_]?[tT][oO][kK][eE][nN].*[\'"][0-9a-zA-Z]{32,45}[\'"]'
+  - '[sS][eE][cC][rR][eE][tT].*[\'"][0-9a-zA-Z]{32,45}[\'"]'
+
+# AWS Keys
+aws_keys:
+  - 'AKIA[0-9A-Z]{16}'
+  - 'aws_access_key_id.*[\'"][0-9A-Z]{20}[\'"]'
+  - 'aws_secret_access_key.*[\'"][0-9A-Za-z/+=]{40}[\'"]'
+
+# Google Keys
+google_keys:
+  - 'AIza[0-9A-Za-z\-_]{35}'
+  - 'ya29\.[0-9A-Za-z\-_]+'
+
+# Database Connections
+database_connections:
+  - 'mysql://[a-zA-Z0-9._-]+:[a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+:[0-9]+/[a-zA-Z0-9._-]+'
+  - 'postgresql://[a-zA-Z0-9._-]+:[a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+:[0-9]+/[a-zA-Z0-9._-]+'
+  - 'mongodb://[a-zA-Z0-9._-]+:[a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+:[0-9]+/[a-zA-Z0-9._-]+'
+
+# Private Keys
+private_keys:
+  - '-----BEGIN PRIVATE KEY-----'
+  - '-----BEGIN RSA PRIVATE KEY-----'
+  - '-----BEGIN DSA PRIVATE KEY-----'
+  - '-----BEGIN EC PRIVATE KEY-----'
+
+# Passwords
+passwords:
+  - '[pP][aA][sS][sS][wW][oO][rR][dD].*[\'"][^\'"]{8,}[\'"]'
+  - '[pP][wW][dD].*[\'"][^\'"]{8,}[\'"]'
+
+# Slack Tokens
+slack_tokens:
+  - 'xox[p|b|o|a]-[0-9]{12}-[0-9]{12}-[0-9]{12}-[a-z0-9]{32}'
+
+# Firebase Keys
+firebase_keys:
+  - 'AAAA[A-Za-z0-9_-]{7}:[A-Za-z0-9_-]{140}'
+
+# GitHub Tokens
+github_tokens:
+  - 'ghp_[A-Za-z0-9_]{36}'
+  - 'gho_[A-Za-z0-9_]{36}'
+  - 'ghu_[A-Za-z0-9_]{36}'
+  - 'ghs_[A-Za-z0-9_]{36}'
+  - 'ghr_[A-Za-z0-9_]{36}'
+
+# JWT Tokens
+jwt_tokens:
+  - 'eyJ[A-Za-z0-9-_=]+\.[A-Za-z0-9-_=]+\.?[A-Za-z0-9-_.+/=]*'
+
+# SendGrid API Keys
+sendgrid_keys:
+  - 'SG\.[A-Za-z0-9_-]{22}\.[A-Za-z0-9_-]{43}'
+
+# Stripe Keys
+stripe_keys:
+  - 'sk_live_[A-Za-z0-9]{24}'
+  - 'pk_live_[A-Za-z0-9]{24}'
+  - 'sk_test_[A-Za-z0-9]{24}'
+  - 'pk_test_[A-Za-z0-9]{24}'
+
+# Twilio Keys
+twilio_keys:
+  - 'SK[A-Za-z0-9]{32}'
+  - 'AC[A-Za-z0-9]{32}'
+
+# Mailgun Keys
+mailgun_keys:
+  - 'key-[A-Za-z0-9]{32}'
+
+# Heroku Keys
+heroku_keys:
+  - '[h|H]eroku.*[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}'
+
+# Generic Secrets
+generic_secrets:
+  - '[sS][eE][cC][rR][eE][tT].*[\'"][^\'"]{8,}[\'"]'
+  - '[tT][oO][kK][eE][nN].*[\'"][^\'"]{8,}[\'"]'
+  - '[kK][eE][yY].*[\'"][^\'"]{8,}[\'"]' 

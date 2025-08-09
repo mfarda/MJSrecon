@@ -1,0 +1,71 @@
+# GitLab Scanner Configuration
+# This file contains GitLab-specific configuration settings
+
+# GitLab API Configuration
+api_token_env: "GITLAB_TOKEN"  # Environment variable name for GitLab API token
+rate_limit_wait: 60  # Seconds to wait when rate limited
+
+# Tool Selection and Configuration
+enabled_tools:
+  trufflehog: true
+  gitleaks: true
+  custom_patterns: true
+
+# Scanning Configuration
+max_repos_to_scan: 4     # Maximum number of repositories to clone and scan
+max_file_size_mb: 10     # Maximum file size to scan (in MB)
+clone_timeout: 300       # Timeout for git clone operations (seconds)
+scan_timeout: 600        # Timeout for scanning operations (seconds)
+
+# Search Configuration
+search_per_page: 100       # Number of results per GitLab API page
+max_search_results: 1000   # Maximum total search results to process
+
+# Basic Search Queries (uncomment to enable)
+search_queries:
+  # Basic searches
+  - '"{target}"'
+  - 'group:{target}'
+  - 'user:{target}'            
+  - '{target}'
+  - '"{target}" language:javascript'
+  - '"{target}" language:python'
+  - '"{target}" language:go'
+  - '"{target}" language:java'
+  
+  # Category 1: Credential & Secret Leakage (uncomment to enable)
+  # - 'group:"{target}" "aws_access_key_id"'
+  # - 'group:"{target}" "aws_secret_access_key"'
+  # - 'group:"{target}" "Authorization: Bearer"'
+  # - 'group:"{target}" "slack_token" path:*.json'
+  # - 'group:"{target}" "http://firebaseio.com"'
+  # - 'group:"{target}" "access_token" path:*.json'
+  # - 'group:"{target}" "client_secret" path:*.yaml'
+  # - 'group:"{target}" "DATABASE_URL" path:*.env'
+  # - 'group:"{target}" "jwt_token" path:*.json'
+  # - 'group:"{target}" "sendgrid_api_key"'
+  
+  # Category 2: Internal Config & CI/CD (uncomment to enable)
+  # - 'group:"{target}" path:**/.env'
+  # - 'group:"{target}" path:**/config.js'
+  # - 'group:"{target}" path:**/docker-compose.yml'
+  # - 'group:"{target}" path:**/config.yaml'
+  # - 'group:"{target}" path:**/sshd_config'
+  # - 'group:"{target}" path:**/.gitlab-ci.yml'
+  # - 'group:"{target}" path:**/host.json language:json'
+  # - 'group:"{target}" "DATABASE_PASSWORD" path:*.properties'
+  # - 'group:"{target}" "service_account" path:*.json'
+
+# Output Configuration
+save_repositories: true    # Save repository information
+save_secrets: true         # Save found secrets
+save_useful_data: true     # Save useful data analysis
+save_groups: true          # Save group information
+save_users: true           # Save user information
+generate_report: true      # Generate markdown summary report
+
+# Performance Configuration
+max_concurrent_repos: 3    # Max concurrent repository processing
+max_concurrent_scans: 4    # Max concurrent scans per repo
+cache_enabled: true        # Enable API response caching
+cache_ttl: 3600           # Cache TTL in seconds (1 hour) 

@@ -19,6 +19,9 @@ lxml>=4.9.0
 # File handling and requests with file:// protocol
 requests-file>=1.5.2
 
+# Configuration management
+PyYAML>=6.0
+
 # Development and testing (optional)
 pytest>=7.0.0
 pytest-asyncio>=0.21.0
