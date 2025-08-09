@@ -71,6 +71,7 @@ def main():
     # Discovery options
     parser.add_argument('--gather-mode', choices=['g', 'w', 'k', 'gw', 'gk', 'wk', 'gwk'], default='gwk', help='Tools to use for discovery: g=gau, w=wayback, k=katana.')
     parser.add_argument('-d', '--depth', type=int, default=2, help='Katana crawl depth.')
+    parser.add_argument('--uro', action='store_true', help='Use uro to deduplicate/shorten URLs after discovery and use its output for all subsequent modules.')
     
     # Fuzzing options
     parser.add_argument('--fuzz-mode', choices=['wordlist', 'permutation', 'both', 'off'], default='off', help='Fuzzing mode.')

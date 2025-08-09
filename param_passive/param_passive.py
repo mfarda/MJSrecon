@@ -37,9 +37,9 @@ def run(args: Any, config: Dict, logger: Logger, workflow_data: Dict) -> Dict:
         if any(ext in parsed.path.lower() for ext in important_extensions):
             important_urls.add(url)
         
-        # Extract parameters
-        params = parse_qs(parsed.query)
-        for param_name in params.keys():
+        # Extract parameters using unfurl
+        params = extract_parameters_with_unfurl(url, logger)
+        for param_name in params:
             all_params.add(param_name)
     
     # Save results
