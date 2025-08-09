@@ -49,6 +49,12 @@ def show_help_minimal():
     console.print("  --command-timeout      Override command timeout")
     console.print()
     
+    console.print("ENVIRONMENT OPTIONS:")
+    console.print("  --env development      Fast scans, minimal timeouts, debug logging")
+    console.print("  --env production       Optimized for real-world scanning, extended timeouts")
+    console.print("  --env testing          Minimal resource usage, quick validation")
+    console.print()
+    
     console.print("DISCOVERY OPTIONS:")
     console.print("  --gather-mode          Tools: g=gau, w=wayback, k=katana (default: gwk)")
     console.print("  -d, --depth            Katana crawl depth (default: 2)")
@@ -62,10 +68,9 @@ def show_help_minimal():
     console.print()
     
     console.print("EXAMPLES:")
-    console.print("  Basic:     python run_workflow.py discovery -t example.com")
-    console.print("  Full:      python run_workflow.py discovery validation processing download analysis -t example.com")
-    console.print("  Proxy:     python run_workflow.py discovery -t example.com --proxy socks5://127.0.0.1:40000")
-    console.print("  Large:     python run_workflow.py discovery -t large-target.com --command-timeout 7200")
+    console.print("  Full workflow: python run_workflow.py discovery validation processing download analysis fuzzingjs param-passive fallparams sqli github reporting -t example.com")
+    console.print("  Large target: python run_workflow.py discovery -t large-target.com --proxy socks5://127.0.0.1:40000 --env production --command-timeout 7200")
+    console.print("  Independent: python run_workflow.py discovery --independent --input urls.txt --env development")
     console.print()
     
     console.print("HELP LEVELS:")
@@ -129,6 +134,19 @@ def show_help():
     for opt, desc in core_options.items():
         core_table.add_row(opt, desc)
     console.print(core_table)
+
+    # Environment Options
+    env_table = Table(title="[bold green]Environment Options[/bold green]", box=box.SIMPLE)
+    env_table.add_column("Environment", style="cyan", no_wrap=True)
+    env_table.add_column("Description")
+    env_options = {
+        'development': 'Fast scans, minimal timeouts, debug logging. Best for testing and development.',
+        'production': 'Optimized for real-world scanning, extended timeouts, high concurrency.',
+        'testing': 'Minimal resource usage, quick validation, reduced timeouts for testing.'
+    }
+    for env, desc in env_options.items():
+        env_table.add_row(env, desc)
+    console.print(env_table)
 
     # Discovery Options
     discovery_table = Table(title="[bold green]Discovery Options[/bold green]", box=box.SIMPLE)
@@ -201,26 +219,17 @@ def show_help():
     # Quick Examples Panel
     quick_examples_panel = Panel("""
 [bold]Quick Examples:[/bold]
-• Basic discovery: [cyan]python run_workflow.py discovery -t example.com[/cyan]
-• Full workflow: [cyan]python run_workflow.py discovery validation processing download analysis -t example.com[/cyan]
-• With proxy: [cyan]python run_workflow.py discovery -t example.com --proxy socks5://127.0.0.1:40000[/cyan]
-• Large target: [cyan]python run_workflow.py discovery -t large-target.com --command-timeout 7200[/cyan]
-• Independent mode: [cyan]python run_workflow.py discovery --independent --input urls.txt[/cyan]
-• Environment: [cyan]python run_workflow.py discovery -t example.com --env production[/cyan]
+
+[bold]1. Full Workflow (All Modules):[/bold]
+[cyan]python run_workflow.py discovery validation processing download analysis fuzzingjs param-passive fallparams sqli github reporting -t example.com[/cyan]
+
+[bold]2. Large Target with Proxy:[/bold]
+[cyan]python run_workflow.py discovery -t large-target.com --proxy socks5://127.0.0.1:40000 --env production --command-timeout 7200[/cyan]
+
+[bold]3. Independent Mode with Environment:[/bold]
+[cyan]python run_workflow.py discovery --independent --input urls.txt --env development[/cyan]
     """, title="[bold green]Quick Examples[/bold green]", border_style="green")
     console.print(quick_examples_panel)
-
-    # Key Features Summary
-    features_summary_panel = Panel("""
-[bold]Key Features:[/bold]
-• [cyan]Multi-extension support[/cyan] (.js, .jsx, .ts, .tsx, .vue, .json)
-• [cyan]Configurable patterns[/cyan] for fuzzing and SQL injection detection
-• [cyan]Environment profiles[/cyan] (development, production, testing)
-• [cyan]Proxy support[/cyan] (SOCKS5, HTTP/HTTPS with authentication)
-• [cyan]Asynchronous processing[/cyan] with configurable timeouts
-• [cyan]Partial output preservation[/cyan] on command timeouts
-    """, title="[bold blue]Key Features[/bold blue]", border_style="blue")
-    console.print(features_summary_panel)
 
     # Extended Help Notice
     extended_notice = Panel(
@@ -271,6 +280,48 @@ def show_help_extended():
 • Partial output preservation on timeout
     """, title="[bold blue]Key Features[/bold blue]", border_style="blue")
     console.print(features_panel)
+
+    # Environment Configuration
+    env_panel = Panel("""
+[bold]Environment Configuration System:[/bold]
+
+[bold]Development Environment (--env development):[/bold]
+• Fast scans with minimal timeouts (300s command timeout)
+• Debug logging enabled by default
+• Reduced concurrency (5-10 concurrent operations)
+• Katana depth: 1
+• Proxy disabled by default
+• Best for: Testing, development, quick validation
+
+[bold]Production Environment (--env production):[/bold]
+• Extended timeouts (3600s command timeout)
+• Optimized for real-world scanning
+• High concurrency (20-50 concurrent operations)
+• Katana depth: 3
+• Proxy enabled by default
+• Best for: Large targets, real-world reconnaissance
+
+[bold]Testing Environment (--env testing):[/bold]
+• Minimal resource usage
+• Quick validation with reduced timeouts (300s)
+• Low concurrency (2-5 concurrent operations)
+• Katana depth: 1
+• Proxy disabled
+• Best for: CI/CD, automated testing, resource-constrained systems
+
+[bold]Configuration Loading Order:[/bold]
+1. config/defaults.yaml (base configuration)
+2. config/environments.yaml (environment-specific overrides)
+3. CLI arguments (command line overrides)
+
+[bold]Environment-Specific Settings:[/bold]
+• Timeouts: command, download, analysis, validation
+• Concurrency: max_workers, max_concurrent_downloads
+• Proxy settings: enabled/disabled, timeouts
+• Discovery depth: katana crawl depth
+• Logging levels: debug, info, warning, error
+    """, title="[bold yellow]Environment Configuration[/bold yellow]", border_style="yellow")
+    console.print(env_panel)
 
     # Example Workflows
     example_panel = Panel("""
