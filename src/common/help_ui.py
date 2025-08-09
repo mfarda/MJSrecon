@@ -44,6 +44,7 @@ def show_help_minimal():
     console.print("  --independent          Run single module mode")
     console.print("  --input                Input file for independent mode")
     console.print("  --command-timeout      Override command timeout")
+    console.print("  --discovery-timeout    Override discovery timeout")
     console.print("  --gather-mode          Tools: g=gau, w=wayback, k=katana (default: gwk)")
     console.print("  -d, --depth            Katana crawl depth (default: 2)")
     console.print("  --uro                  Use uro for URL deduplication")
@@ -114,7 +115,8 @@ def show_help():
         '--env': 'Configuration environment: development, production, testing (default: development).',
         '--independent': 'Run a single module independently (requires --input).',
         '--input': 'Input file for independent mode.',
-        '--command-timeout': 'Override command timeout in seconds (default: from config).'
+        '--command-timeout': 'Override command timeout in seconds (default: from config).',
+        '--discovery-timeout': 'Override discovery timeout in seconds (default: from config).'
     }
     for opt, desc in core_options.items():
         core_table.add_row(opt, desc)

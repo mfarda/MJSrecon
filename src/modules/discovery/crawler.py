@@ -21,7 +21,8 @@ def get_tool_config(tool_char: str, target: str, depth: int, proxy_url: str = No
         # katana - with proxy parameter
         if proxy_url:
             # Remove silent mode when using proxy to see output and debug issues
-            cmd = ["katana", "-u", f"https://{target}", "-jc", "-d", str(depth), "-proxy", proxy_url]
+            # Add additional debugging flags for katana
+            cmd = ["katana", "-u", f"https://{target}", "-jc", "-d", str(depth), "-proxy", proxy_url, "-v"]
             return ("katana", cmd, True, proxy_url)
         else:
             return ("katana", ["katana", "-u", f"https://{target}", "-jc", "-d", str(depth), "-silent"], False, None)
@@ -46,12 +47,17 @@ def run_tool_concurrent(tool_name: str, cmd: List[str], config: Dict, logger: Lo
         logger.info(f"Running {tool_name}...")
         logger.command(f"Command: {' '.join(cmd)}")
         
+        # Show timeout info for user awareness
+        discovery_timeout = config['timeouts'].get('discovery', config['timeouts']['command'])
+        logger.info(f"{tool_name} timeout set to {discovery_timeout} seconds")
+        
         # Handle proxy configuration for different tools
+        
         if use_proxy and proxy_url:
             logger.debug(f"Using proxy {proxy_url} for {tool_name}")
             # For tools that need proxy, we'll handle it in the command itself
             # The proxy is already added to the command for katana
-            exit_code, stdout, stderr = run_command(cmd, timeout=config['timeouts']['command'])
+            exit_code, stdout, stderr = run_command(cmd, timeout=discovery_timeout)
         else:
             # For tools that don't use proxy (gau, waybackurls), clear environment variables
             logger.debug(f"Running {tool_name} without proxy")
@@ -66,7 +72,7 @@ def run_tool_concurrent(tool_name: str, cmd: List[str], config: Dict, logger: Lo
                 if 'HTTPS_PROXY' in os.environ:
                     del os.environ['HTTPS_PROXY']
                 
-                exit_code, stdout, stderr = run_command(cmd, timeout=config['timeouts']['command'])
+                exit_code, stdout, stderr = run_command(cmd, timeout=discovery_timeout)
             finally:
                 # Restore original environment variables
                 if original_http_proxy:
@@ -87,6 +93,24 @@ def run_tool_concurrent(tool_name: str, cmd: List[str], config: Dict, logger: Lo
             
             logger.success(f"{tool_name} found {len(filtered_urls)} new URLs.")
             return tool_name, filtered_urls
+        elif exit_code == -1 and "timed out" in stderr:
+            logger.warning(f"{tool_name} timed out after {discovery_timeout} seconds. Partial results may be available.")
+            if stdout:
+                urls = set(stdout.splitlines())
+                filtered_urls = exclude_urls_with_extensions(urls, config=config)
+                
+                # Save partial results
+                tool_urls_file = config['files'].get(f'{tool_name}_urls', f'{tool_name}_urls.txt')
+                tool_filtered_file = config['files'].get(f'{tool_name}_filtered', f'{tool_name}_filtered_urls.txt')
+                
+                write_lines_to_file(output_dir / tool_urls_file, urls)
+                write_lines_to_file(output_dir / tool_filtered_file, filtered_urls)
+                
+                logger.info(f"{tool_name} partial results: {len(filtered_urls)} URLs (tool timed out)")
+                return tool_name, filtered_urls
+            else:
+                logger.error(f"{tool_name} timed out with no output")
+                return tool_name, set()
         elif stderr:
             logger.error(f"{tool_name} failed. Stderr: {stderr}")
             return tool_name, set()
@@ -107,6 +131,10 @@ def run(args: Any, config: Dict, logger: Logger, workflow_data: Dict) -> Dict:
     gather_mode = args.gather_mode
     
     logger.info(f"Gathering URLs for '{target}' using mode '{gather_mode}'...")
+    
+    # Warn about deep crawling
+    if args.depth > 2:
+        logger.warning(f"Deep crawling enabled (depth={args.depth}). This may take a long time and generate many URLs.")
     
     # Check if proxy is enabled
     proxy_enabled = hasattr(args, 'proxy') and args.proxy

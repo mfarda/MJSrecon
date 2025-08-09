@@ -68,6 +68,7 @@ For detailed help with examples and customization: python run_workflow.py -hhh
     parser.add_argument('--independent', action='store_true', help='Run a single module independently (requires --input)')
     parser.add_argument('--input', help='Input file for independent mode')
     parser.add_argument('--command-timeout', type=int, help='Override command timeout in seconds (default: from config)')
+    parser.add_argument('--discovery-timeout', type=int, help='Override discovery timeout in seconds (default: from config)')
 
     # Discovery arguments
     parser.add_argument('--gather-mode', default='gwk', help='Discovery tools to use: g=gau, w=waybackurls, k=katana (default: gwk)')
@@ -142,6 +143,10 @@ For detailed help with examples and customization: python run_workflow.py -hhh
     if args.command_timeout:
         logger.info(f"Overriding command timeout to {args.command_timeout} seconds")
         config['timeouts']['command'] = args.command_timeout
+    
+    if args.discovery_timeout:
+        logger.info(f"Overriding discovery timeout to {args.discovery_timeout} seconds")
+        config['timeouts']['discovery'] = args.discovery_timeout
     
     # Validate commands after parsing
     if args.commands:

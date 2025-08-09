@@ -31,7 +31,8 @@ proxy:
 
 # Timeouts for various operations
 timeouts:
-  command: 1200  # 5 minutes for long-running tools
+  command: 1200  # 20 minutes for long-running tools
+  discovery: 600  # 10 minutes for discovery tools (gau, waybackurls, katana)
   download: 120
   analysis: 300  # Increased for potentially large JS files
   verify: 10     # Timeout for a single URL verification request
