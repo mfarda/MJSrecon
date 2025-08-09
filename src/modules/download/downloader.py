@@ -14,7 +14,17 @@ def run(args: Any, config: Dict, logger: Logger, workflow_data: Dict) -> Dict:
     """
     target = workflow_data['target']
     urls_dl = workflow_data.get('uro_urls', workflow_data.get('deduplicated_urls', workflow_data.get('live_urls', [])))
-    urls_to_download = find_urls_with_extension(urls_dl, '.js')
+    # Get allowed extensions from config
+    allowed_extensions = config['download']['allowed_extensions']
+    urls_to_download = []
+    
+    # Find URLs with any of the allowed extensions
+    for ext in allowed_extensions:
+        urls_to_download.extend(find_urls_with_extension(urls_dl, ext))
+    
+    # Remove duplicates while preserving order
+    seen = set()
+    urls_to_download = [url for url in urls_to_download if not (url in seen or seen.add(url))]
     
     if not urls_to_download:
         logger.warning(f"[{target}] No URLs to download. Skipping.")
@@ -52,6 +62,21 @@ async def download_all_files(urls: List[str], dl_files_dir: Path, config: Dict, 
 
     return downloaded_files
 
+def generate_filename_from_url(url: str) -> str:
+    """Generate a safe filename from a URL."""
+    # Extract original filename and extension
+    original_filename = url.split('/')[-1]
+    if '.' in original_filename:
+        name_part, ext_part = original_filename.rsplit('.', 1)
+        file_extension = f".{ext_part}"
+    else:
+        name_part = original_filename
+        file_extension = ".js"  # Default fallback
+    
+    sanitized_name = "".join(c if c.isalnum() else '_' for c in name_part)
+    url_hash = hashlib.sha1(url.encode()).hexdigest()[:8]
+    return f"{sanitized_name[:50]}_{url_hash}{file_extension}"
+
 async def download_one_file(session: aiohttp.ClientSession, url: str, dl_files_dir: Path, logger: Logger, proxy: str = None) -> Path | None:
     """Coroutine to download a single file."""
     try:
@@ -61,9 +86,7 @@ async def download_one_file(session: aiohttp.ClientSession, url: str, dl_files_d
                 if response.status == 200:
                     content = await response.read()
                     
-                    sanitized_name = "".join(c if c.isalnum() else '_' for c in url.split('/')[-1])
-                    url_hash = hashlib.sha1(url.encode()).hexdigest()[:8]
-                    filename = f"{sanitized_name[:50]}_{url_hash}.js"
+                    filename = generate_filename_from_url(url)
                     file_path = dl_files_dir / filename
                     
                     with file_path.open('wb') as f:
@@ -78,9 +101,7 @@ async def download_one_file(session: aiohttp.ClientSession, url: str, dl_files_d
                 if response.status == 200:
                     content = await response.read()
                     
-                    sanitized_name = "".join(c if c.isalnum() else '_' for c in url.split('/')[-1])
-                    url_hash = hashlib.sha1(url.encode()).hexdigest()[:8]
-                    filename = f"{sanitized_name[:50]}_{url_hash}.js"
+                    filename = generate_filename_from_url(url)
                     file_path = dl_files_dir / filename
                     
                     with file_path.open('wb') as f:

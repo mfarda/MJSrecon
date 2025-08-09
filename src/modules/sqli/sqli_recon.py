@@ -103,7 +103,7 @@ def run(args: Any, config: Dict, logger: Logger, workflow_data: Dict) -> Dict:
     logger.info(f"[{target}] Applying gf sqli filtering to {len(urls)} URLs...")
     
     # Step 1: Initial filtering for potential SQLi targets
-    sqli_targets = filter_sqli_targets(urls, logger)
+    sqli_targets = filter_sqli_targets(urls, config, logger)
     
     if not sqli_targets:
         logger.warning(f"[{target}] No potential SQLi targets found after filtering.")
@@ -157,7 +157,7 @@ def run(args: Any, config: Dict, logger: Logger, workflow_data: Dict) -> Dict:
     
     return results
 
-def filter_sqli_targets(urls: Set[str], logger: Logger) -> Set[str]:
+def filter_sqli_targets(urls: Set[str], config: Dict, logger: Logger) -> Set[str]:
     """Filter URLs for potential SQLi targets using top 20 SQL injection prone parameters and gf sqli."""
     sqli_targets = set()
     
@@ -168,20 +168,10 @@ def filter_sqli_targets(urls: Set[str], logger: Logger) -> Set[str]:
         'search', 'query', 'keyword', 'term', 'q', 's'
     ]
     
-    # File extensions that commonly have SQLi vulnerabilities
-    vulnerable_extensions = ['.php', '.asp', '.aspx', '.jsp', '.jspx', '.do', '.action']
-    
-    # Common vulnerable file patterns
-    vulnerable_files = [
-        'product.php', 'view.php', 'show.php', 'display.php', 'detail.php',
-        'article.php', 'news.php', 'item.php', 'user.php', 'member.php',
-        'profile.php', 'account.php', 'search.php', 'query.php', 'result.php',
-        'list.php', 'category.php', 'page.php', 'index.php', 'main.php',
-        'product.asp', 'view.asp', 'show.asp', 'detail.asp', 'article.asp',
-        'news.asp', 'item.asp', 'user.asp', 'member.asp', 'profile.asp',
-        'account.asp', 'search.asp', 'query.asp', 'result.asp', 'list.asp',
-        'category.asp', 'page.asp', 'index.asp', 'main.asp'
-    ]
+    # Get configuration values
+    vulnerable_extensions = config['sqli']['vulnerable_extensions']
+    vulnerable_files = config['sqli']['vulnerable_files']
+    sql_indicators = config['sqli']['sql_indicators']
     
     for url in urls:
         parsed = urlparse(url)
@@ -215,11 +205,6 @@ def filter_sqli_targets(urls: Set[str], logger: Logger) -> Set[str]:
                 continue
         
         # Check for common SQLi indicators in URL
-        sql_indicators = [
-            'select', 'union', 'insert', 'update', 'delete', 'drop', 'create',
-            'alter', 'exec', 'execute', 'script', 'javascript', 'vbscript'
-        ]
-        
         if any(indicator in url_lower for indicator in sql_indicators):
             sqli_targets.add(url)
             continue

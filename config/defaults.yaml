@@ -100,6 +100,27 @@ analysis:
 enumeration:
   fuzz_threads: 10
   fuzz_timeout: 30
+  # Fuzzing wordlist generation settings
+  prefixes:
+    - "app"
+    - "lib"
+    - "vendor"
+    - "dist"
+    - "src"
+    - "core"
+    - "main"
+  suffixes:
+    - "bundle"
+    - "min"
+    - "dev"
+    - "prod"
+    - "v1"
+    - "v2"
+  separators:
+    - ""
+    - "-"
+    - "_"
+    - "."
 
 # Parameter Extraction Configuration
 param_passive:
@@ -122,7 +143,72 @@ sqli:
   timeout: 300
   delay_threshold: 3
   sqlmap_args: "--batch --random-agent --level=2 --risk=1"
-  ghauri_args: "--batch --random-agent" 
+  ghauri_args: "--batch --random-agent"
+  # Vulnerable file extensions that commonly have SQLi vulnerabilities
+  vulnerable_extensions:
+    - ".php"
+    - ".asp"
+    - ".aspx"
+    - ".jsp"
+    - ".jspx"
+    - ".do"
+    - ".action"
+  # Common vulnerable file patterns
+  vulnerable_files:
+    - "product.php"
+    - "view.php"
+    - "show.php"
+    - "display.php"
+    - "detail.php"
+    - "article.php"
+    - "news.php"
+    - "item.php"
+    - "user.php"
+    - "member.php"
+    - "profile.php"
+    - "account.php"
+    - "search.php"
+    - "query.php"
+    - "result.php"
+    - "list.php"
+    - "category.php"
+    - "page.php"
+    - "index.php"
+    - "main.php"
+    - "product.asp"
+    - "view.asp"
+    - "show.asp"
+    - "detail.asp"
+    - "article.asp"
+    - "news.asp"
+    - "item.asp"
+    - "user.asp"
+    - "member.asp"
+    - "profile.asp"
+    - "account.asp"
+    - "search.asp"
+    - "query.asp"
+    - "result.asp"
+    - "list.asp"
+    - "category.asp"
+    - "page.asp"
+    - "index.asp"
+    - "main.asp"
+  # SQL injection indicators in URLs
+  sql_indicators:
+    - "select"
+    - "union"
+    - "insert"
+    - "update"
+    - "delete"
+    - "drop"
+    - "create"
+    - "alter"
+    - "exec"
+    - "execute"
+    - "script"
+    - "javascript"
+    - "vbscript" 
 
 # Reporting Configuration
 reporting:

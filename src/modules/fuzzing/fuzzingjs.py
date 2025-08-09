@@ -93,9 +93,9 @@ def get_unique_js_filenames(urls: Set[str]) -> Set[str]:
 def generate_permutation_wordlist(js_filenames: Set[str], output_dir: Path, config: Dict) -> Path:
     """Generates a wordlist based on permutations of existing JS filenames."""
     permutations = set()
-    prefixes = ['app', 'lib', 'vendor', 'dist', 'src', 'core', 'main']
-    suffixes = ['bundle', 'min', 'dev', 'prod', 'v1', 'v2']
-    separators = ['', '-', '_', '.']
+    prefixes = config['enumeration']['prefixes']
+    suffixes = config['enumeration']['suffixes']
+    separators = config['enumeration']['separators']
 
     for filename in js_filenames:
         base_name = filename.rsplit('.', 1)[0]

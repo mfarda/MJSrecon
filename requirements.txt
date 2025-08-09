@@ -34,5 +34,41 @@ colorama>=0.4.6
 click>=8.1.0
 
 # Performance monitoring
-psutil>=5.9.0 
-uro 
+psutil>=5.9.0
+
+# URL processing and deduplication
+uro>=1.0.0
+
+# SOCKS proxy support
+PySocks>=1.7.1
+
+# Async support
+asyncio-throttle>=1.0.2
+
+# Additional dependencies found in codebase
+# These are standard library modules but listed for completeness:
+# - argparse (standard library)
+# - subprocess (standard library)
+# - pathlib (standard library)
+# - typing (standard library)
+# - urllib.parse (standard library)
+# - os (standard library)
+# - sys (standard library)
+# - json (standard library)
+# - time (standard library)
+# - tempfile (standard library)
+# - shutil (standard library)
+# - hashlib (standard library)
+# - pickle (standard library)
+# - re (standard library)
+# - datetime (standard library)
+# - concurrent.futures (standard library)
+# - base64 (standard library)
+# - logging (standard library)
+# - glob (standard library)
+# - html (standard library)
+# - ssl (standard library)
+# - xml.etree.ElementTree (standard library)
+# - gzip (standard library)
+# - string (standard library)
+# - random (standard library) 
