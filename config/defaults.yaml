@@ -229,13 +229,13 @@ performance:
 # Secret Patterns for Custom Scanning (used by all scanners)
 secret_patterns:
   api_keys:
-    - '[aA][pP][iI][-_]?[kK][eE][yY].*[\'"][0-9a-zA-Z]{32,45}[\'"]'
-    - '[aA][pP][iI][-_]?[tT][oO][kK][eE][nN].*[\'"][0-9a-zA-Z]{32,45}[\'"]'
-    - '[sS][eE][cC][rR][eE][tT].*[\'"][0-9a-zA-Z]{32,45}[\'"]'
+    - 'api_key.*[0-9a-zA-Z]{32,45}'
+    - 'api_token.*[0-9a-zA-Z]{32,45}'
+    - 'secret.*[0-9a-zA-Z]{32,45}'
   aws_keys:
     - 'AKIA[0-9A-Z]{16}'
-    - 'aws_access_key_id.*[\'"][0-9A-Z]{20}[\'"]'
-    - 'aws_secret_access_key.*[\'"][0-9A-Za-z/+=]{40}[\'"]'
+    - 'aws_access_key_id.*[0-9A-Z]{20}'
+    - 'aws_secret_access_key.*[0-9A-Za-z/+=]{40}'
   google_keys:
     - 'AIza[0-9A-Za-z\-_]{35}'
     - 'ya29\.[0-9A-Za-z\-_]+'
@@ -249,8 +249,8 @@ secret_patterns:
     - '-----BEGIN DSA PRIVATE KEY-----'
     - '-----BEGIN EC PRIVATE KEY-----'
   passwords:
-    - '[pP][aA][sS][sS][wW][oO][rR][dD].*[\'"][^\'"]{8,}[\'"]'
-    - '[pP][wW][dD].*[\'"][^\'"]{8,}[\'"]'
+    - 'password.*[^\s]{8,}'
+    - 'pwd.*[^\s]{8,}'
 
 # Results directories for analysis tools
 results_dirs:
