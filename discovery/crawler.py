@@ -25,6 +25,7 @@ def run_tool_concurrent(tool_name: str, cmd: List[str], config: Dict, logger: Lo
     """
     try:
         logger.info(f"Running {tool_name}...")
+        logger.info(f"Command: {' '.join(cmd)}")
         
         # Handle proxy configuration for different tools
         if use_proxy and proxy_url:
@@ -109,7 +110,9 @@ def run(args: Any, config: Dict, logger: Logger, workflow_data: Dict) -> Dict:
         elif tool_char == 'k':
             # katana - with proxy parameter
             if proxy_url:
-                return ("katana", ["katana", "-u", f"https://{target}", "-jc", "-d", str(depth), "-proxy", proxy_url, "-silent"], True, proxy_url)
+                # Remove silent mode when using proxy to see output and debug issues
+                cmd = ["katana", "-u", f"https://{target}", "-jc", "-d", str(depth), "-proxy", proxy_url]
+                return ("katana", cmd, True, proxy_url)
             else:
                 return ("katana", ["katana", "-u", f"https://{target}", "-jc", "-d", str(depth), "-silent"], False, None)
         else:
@@ -241,7 +244,9 @@ async def run_async(args: Any, config: Dict, logger: Logger, workflow_data: Dict
         elif tool_char == 'k':
             # katana - with proxy parameter
             if proxy_url:
-                return ("katana", ["katana", "-u", f"https://{target}", "-jc", "-d", str(depth), "-proxy", proxy_url, "-silent"], True, proxy_url)
+                # Remove silent mode when using proxy to see output and debug issues
+                cmd = ["katana", "-u", f"https://{target}", "-jc", "-d", str(depth), "-proxy", proxy_url]
+                return ("katana", cmd, True, proxy_url)
             else:
                 return ("katana", ["katana", "-u", f"https://{target}", "-jc", "-d", str(depth), "-silent"], False, None)
         else:
@@ -262,6 +267,7 @@ async def run_async(args: Any, config: Dict, logger: Logger, workflow_data: Dict
         """Async version of tool execution with proxy handling"""
         try:
             logger.info(f"Running {tool_name}...")
+            logger.info(f"Command: {' '.join(cmd)}")
             
             # Handle proxy configuration for different tools
             if use_proxy and proxy_url:
