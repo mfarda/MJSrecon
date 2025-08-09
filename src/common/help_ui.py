@@ -171,7 +171,10 @@ def show_help():
         '--fuzz-mode': 'Fuzzing mode: wordlist, permutation, both, off (default: off).',
         '--fuzz-wordlist': 'Custom wordlist for fuzzing.',
         '--fuzz-js-only': 'Only fuzz paths from JavaScript files (default: true).',
-        '--fuzz-all-paths': 'Fuzz paths from all discovered URLs (overrides --fuzz-js-only).'
+        '--fuzz-all-paths': 'Fuzz paths from all discovered URLs (overrides --fuzz-js-only).',
+        '--fuzz-max-paths': 'Maximum number of paths to fuzz (default: 50).',
+        '--fuzz-rank-paths': 'Rank paths by JS file count (default: true).',
+        '--fuzz-min-js-files': 'Minimum JS files required per path (default: 1).'
     }
     for opt, desc in fuzzing_options.items():
         fuzzing_table.add_row(opt, desc)
@@ -367,7 +370,10 @@ def show_help_extended():
         '--fuzz-mode': 'Fuzzing mode: wordlist, permutation, both, off (default: off).',
         '--fuzz-wordlist': 'Custom wordlist for fuzzing.',
         '--fuzz-js-only': 'Only fuzz paths from JavaScript files (default: true).',
-        '--fuzz-all-paths': 'Fuzz paths from all discovered URLs (overrides --fuzz-js-only).'
+        '--fuzz-all-paths': 'Fuzz paths from all discovered URLs (overrides --fuzz-js-only).',
+        '--fuzz-max-paths': 'Maximum number of paths to fuzz (default: 50).',
+        '--fuzz-rank-paths': 'Rank paths by JS file count (default: true).',
+        '--fuzz-min-js-files': 'Minimum JS files required per path (default: 1).'
     }
     for opt, desc in fuzzing_options.items():
         fuzzing_table.add_row(opt, desc)
@@ -650,6 +656,9 @@ def show_command_help(command: str):
                 '--fuzz-wordlist': 'Custom wordlist for fuzzing (required for wordlist/both)',
                 '--fuzz-js-only': 'Only fuzz paths from JavaScript files (default: true).',
                 '--fuzz-all-paths': 'Fuzz paths from all discovered URLs (overrides --fuzz-js-only).',
+                '--fuzz-max-paths': 'Maximum number of paths to fuzz (default: 50).',
+                '--fuzz-rank-paths': 'Rank paths by JS file count (default: true).',
+                '--fuzz-min-js-files': 'Minimum JS files required per path (default: 1).',
                 '--env': 'Environment affects threads and timeouts'
             }
         },

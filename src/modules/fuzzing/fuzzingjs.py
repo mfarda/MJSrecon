@@ -74,8 +74,8 @@ def run(args: Any, config: Dict, logger: Logger, workflow_data: Dict) -> Dict:
     }
 
 def get_unique_paths_from_urls(urls: Set[str], config: Dict, args: Any, logger: Logger) -> Dict[str, str]:
-    """Extracts unique base URLs and directory paths from JavaScript file URLs only."""
-    unique_paths = {}
+    """Extracts unique base URLs and directory paths from JavaScript file URLs, ranked by JS file count."""
+    path_scores = {}  # Track path -> (base_url, js_file_count)
     js_urls_processed = 0
     
     # Get configuration for path selection (CLI args take precedence)
@@ -90,7 +90,13 @@ def get_unique_paths_from_urls(urls: Set[str], config: Dict, args: Any, logger: 
         js_only = config.get('fuzzingjs', {}).get('js_only_paths', True)
         include_related = config.get('fuzzingjs', {}).get('include_related_paths', False)
     
-    max_paths = config.get('fuzzingjs', {}).get('max_paths', 50)
+    # CLI args take precedence over config for ranking behavior
+    max_paths = getattr(args, 'fuzz_max_paths', None) or config.get('fuzzingjs', {}).get('max_paths', 50)
+    rank_by_js_count = getattr(args, 'fuzz_rank_paths', None)
+    if rank_by_js_count is None:
+        rank_by_js_count = config.get('fuzzingjs', {}).get('rank_by_js_count', True)
+    min_js_files = getattr(args, 'fuzz_min_js_files', None) or config.get('fuzzingjs', {}).get('min_js_files_per_path', 1)
+    show_details = config.get('fuzzingjs', {}).get('show_ranking_details', True)
     
     # Define file extensions to include
     if js_only:
@@ -102,6 +108,7 @@ def get_unique_paths_from_urls(urls: Set[str], config: Dict, args: Any, logger: 
         # Fallback to old behavior - include all URLs
         valid_extensions = None
     
+    # First pass: collect all paths and count JS files in each
     for url in urls:
         try:
             # Check if URL has valid extension
@@ -116,24 +123,58 @@ def get_unique_paths_from_urls(urls: Set[str], config: Dict, args: Any, logger: 
                 dir_path += '/'
             if not dir_path:
                 dir_path = '/'
-            if dir_path not in unique_paths:
-                unique_paths[dir_path] = base_url
-                js_urls_processed += 1
-                logger.debug(f"Discovered unique path for fuzzing from JS file: {base_url}{dir_path}")
-                
-                # Stop if we've reached the maximum paths limit
-                if len(unique_paths) >= max_paths:
-                    logger.info(f"Reached maximum paths limit ({max_paths}). Stopping path discovery.")
-                    break
+            
+            # Count JS files in this path
+            if dir_path not in path_scores:
+                path_scores[dir_path] = {'base_url': base_url, 'js_count': 0, 'paths': set()}
+            
+            path_scores[dir_path]['js_count'] += 1
+            path_scores[dir_path]['paths'].add(url)
+            js_urls_processed += 1
                     
         except Exception:
             continue
     
-    if js_only:
-        logger.info(f"Processed {js_urls_processed} JavaScript URLs, found {len(unique_paths)} unique paths for fuzzing")
+    # Second pass: rank paths by JS file count and select top N
+    if rank_by_js_count:
+        # Filter paths that meet minimum JS file requirement
+        qualified_paths = {k: v for k, v in path_scores.items() if v['js_count'] >= min_js_files}
+        ranked_paths = sorted(qualified_paths.items(), key=lambda x: x[1]['js_count'], reverse=True)
+        
+        if show_details:
+            logger.info(f"Path ranking: {len(qualified_paths)} paths qualified (≥{min_js_files} JS files)")
     else:
-        logger.info(f"Processed all URLs, found {len(unique_paths)} unique paths for fuzzing")
-    return unique_paths
+        # Simple selection without ranking
+        qualified_paths = path_scores
+        ranked_paths = list(qualified_paths.items())
+    
+    # Select top paths up to max_paths limit
+    selected_paths = {}
+    for i, (dir_path, path_info) in enumerate(ranked_paths[:max_paths]):
+        selected_paths[dir_path] = path_info['base_url']
+        if show_details:
+            logger.debug(f"Selected path #{i+1}: {path_info['base_url']}{dir_path} (contains {path_info['js_count']} JS files)")
+    
+    # Log summary of selection process
+    total_paths_found = len(path_scores)
+    qualified_count = len(qualified_paths)
+    logger.info(f"Processed {js_urls_processed} JavaScript URLs, found {total_paths_found} unique paths")
+    logger.info(f"Qualified paths (≥{min_js_files} JS files): {qualified_count}")
+    logger.info(f"Selected top {len(selected_paths)} paths for fuzzing")
+    
+    if qualified_count > max_paths:
+        logger.info(f"Paths not selected (lower JS file count): {qualified_count - max_paths}")
+        # Log some examples of unselected paths
+        unselected = ranked_paths[max_paths:max_paths+5]  # Show first 5 unselected
+        for dir_path, path_info in unselected:
+            logger.debug(f"Unselected: {path_info['base_url']}{dir_path} ({path_info['js_count']} JS files)")
+    
+    if js_only:
+        logger.info(f"Selected {len(selected_paths)} paths from {js_urls_processed} JavaScript URLs for fuzzing")
+    else:
+        logger.info(f"Selected {len(selected_paths)} paths from all URLs for fuzzing")
+    
+    return selected_paths
 
 def get_unique_js_filenames(urls: Set[str]) -> Set[str]:
     """Extracts unique JS filenames from a set of URLs."""

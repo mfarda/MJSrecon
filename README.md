@@ -224,17 +224,29 @@ python run_workflow.py discovery validation processing -t example.com --uro
 ### Fuzzing Path Selection Control
 
 ```bash
-# Only fuzz paths from JavaScript files (default behavior)
+# Default behavior: Only fuzz paths from JavaScript files
 python run_workflow.py discovery validation fuzzingjs -t example.com --fuzz-mode both --fuzz-wordlist ~/SecLists/Discovery/Web-Content/raft-small-words-lowercase.txt
 
-# Fuzz paths from all discovered URLs (more aggressive)
+# Aggressive mode: Fuzz paths from all discovered URLs
 python run_workflow.py discovery validation fuzzingjs -t example.com --fuzz-mode both --fuzz-wordlist ~/SecLists/Discovery/Web-Content/raft-small-words-lowercase.txt --fuzz-all-paths
 
-# Explicitly set JavaScript-only mode
+# Explicit JavaScript-only mode
 python run_workflow.py discovery validation fuzzingjs -t example.com --fuzz-mode both --fuzz-wordlist ~/SecLists/Discovery/Web-Content/raft-small-words-lowercase.txt --fuzz-js-only
+
+# Custom path ranking and selection
+python run_workflow.py discovery validation fuzzingjs -t example.com --fuzz-mode both --fuzz-wordlist ~/SecLists/Discovery/Web-Content/raft-small-words-lowercase.txt --fuzz-max-paths 30 --fuzz-min-js-files 2
+
+# Disable path ranking (simple selection)
+python run_workflow.py discovery validation fuzzingjs -t example.com --fuzz-mode both --fuzz-wordlist ~/SecLists/Discovery/Web-Content/raft-small-words-lowercase.txt --no-fuzz-rank-paths
 ```
 
 The `--fuzz-js-only` option (enabled by default) significantly reduces fuzzing time by only targeting directories that contain JavaScript files, which are more likely to contain additional JS files.
+
+**Path Ranking System:**
+- **Smart Selection**: Paths are ranked by the number of JavaScript files they contain
+- **Top N Selection**: Only the top 50 (configurable) most promising paths are selected
+- **Quality Filter**: Paths must contain at least 1 (configurable) JavaScript file to be considered
+- **Efficient Fuzzing**: Focuses on directories most likely to yield additional JavaScript files
 
 ### Workflow Commands
 | Command | Description |
@@ -272,6 +284,9 @@ The `--fuzz-js-only` option (enabled by default) significantly reduces fuzzing t
 | `--fuzz-wordlist` | Custom wordlist for fuzzing |
 | `--fuzz-js-only` | Only fuzz paths from JavaScript files (default: true) |
 | `--fuzz-all-paths` | Fuzz paths from all discovered URLs |
+| `--fuzz-max-paths` | Maximum number of paths to fuzz (default: 50) |
+| `--fuzz-rank-paths` | Rank paths by JS file count (default: true) |
+| `--fuzz-min-js-files` | Minimum JS files required per path (default: 1) |
 | `-v, --verbose` | Verbose logging |
 
 ## 🔧 Configuration Files

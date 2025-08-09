@@ -87,6 +87,10 @@ For detailed help with examples and customization: python run_workflow.py -hhh
     parser.add_argument('--fuzz-wordlist', help='Custom wordlist for fuzzing')
     parser.add_argument('--fuzz-js-only', action='store_true', default=True, help='Only fuzz paths from JavaScript files (default: true)')
     parser.add_argument('--fuzz-all-paths', action='store_true', help='Fuzz paths from all discovered URLs (overrides --fuzz-js-only)')
+    parser.add_argument('--fuzz-max-paths', type=int, default=50, help='Maximum number of paths to fuzz (default: 50)')
+    parser.add_argument('--fuzz-rank-paths', action='store_true', default=True, help='Rank paths by JS file count (default: true)')
+    parser.add_argument('--no-fuzz-rank-paths', action='store_true', help='Disable path ranking (simple selection)')
+    parser.add_argument('--fuzz-min-js-files', type=int, default=1, help='Minimum JS files required per path (default: 1)')
 
     # SQL injection arguments
     parser.add_argument('--sqli-scanner', choices=['sqlmap', 'ghauri'], default='sqlmap', help='SQLi scanner to use (default: sqlmap)')

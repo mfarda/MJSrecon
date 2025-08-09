@@ -121,6 +121,10 @@ fuzzingjs:
   js_only_paths: true  # Only fuzz paths from JavaScript files (recommended)
   include_related_paths: false  # Include paths from related file types (.ts, .jsx, .vue)
   max_paths: 50  # Maximum number of paths to fuzz
+  # Path ranking and selection
+  rank_by_js_count: true  # Rank paths by number of JS files they contain
+  min_js_files_per_path: 1  # Minimum JS files required for a path to be considered
+  show_ranking_details: true  # Show detailed ranking information in logs
 
 # Parameter Extraction Configuration
 param_passive:
