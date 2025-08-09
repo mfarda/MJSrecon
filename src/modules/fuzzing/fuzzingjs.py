@@ -92,9 +92,15 @@ def get_unique_paths_from_urls(urls: Set[str], config: Dict, args: Any, logger: 
     
     # CLI args take precedence over config for ranking behavior
     max_paths = getattr(args, 'fuzz_max_paths', None) or config.get('fuzzingjs', {}).get('max_paths', 50)
-    rank_by_js_count = getattr(args, 'fuzz_rank_paths', None)
-    if rank_by_js_count is None:
-        rank_by_js_count = config.get('fuzzingjs', {}).get('rank_by_js_count', True)
+    
+    # Handle ranking control
+    if hasattr(args, 'no_fuzz_rank_paths') and args.no_fuzz_rank_paths:
+        rank_by_js_count = False
+    else:
+        rank_by_js_count = getattr(args, 'fuzz_rank_paths', None)
+        if rank_by_js_count is None:
+            rank_by_js_count = config.get('fuzzingjs', {}).get('rank_by_js_count', True)
+    
     min_js_files = getattr(args, 'fuzz_min_js_files', None) or config.get('fuzzingjs', {}).get('min_js_files_per_path', 1)
     show_details = config.get('fuzzingjs', {}).get('show_ranking_details', True)
     

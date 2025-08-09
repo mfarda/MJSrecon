@@ -174,6 +174,7 @@ def show_help():
         '--fuzz-all-paths': 'Fuzz paths from all discovered URLs (overrides --fuzz-js-only).',
         '--fuzz-max-paths': 'Maximum number of paths to fuzz (default: 50).',
         '--fuzz-rank-paths': 'Rank paths by JS file count (default: true).',
+        '--no-fuzz-rank-paths': 'Disable path ranking (simple selection).',
         '--fuzz-min-js-files': 'Minimum JS files required per path (default: 1).'
     }
     for opt, desc in fuzzing_options.items():
@@ -373,6 +374,7 @@ def show_help_extended():
         '--fuzz-all-paths': 'Fuzz paths from all discovered URLs (overrides --fuzz-js-only).',
         '--fuzz-max-paths': 'Maximum number of paths to fuzz (default: 50).',
         '--fuzz-rank-paths': 'Rank paths by JS file count (default: true).',
+        '--no-fuzz-rank-paths': 'Disable path ranking (simple selection).',
         '--fuzz-min-js-files': 'Minimum JS files required per path (default: 1).'
     }
     for opt, desc in fuzzing_options.items():
@@ -658,6 +660,7 @@ def show_command_help(command: str):
                 '--fuzz-all-paths': 'Fuzz paths from all discovered URLs (overrides --fuzz-js-only).',
                 '--fuzz-max-paths': 'Maximum number of paths to fuzz (default: 50).',
                 '--fuzz-rank-paths': 'Rank paths by JS file count (default: true).',
+                '--no-fuzz-rank-paths': 'Disable path ranking (simple selection).',
                 '--fuzz-min-js-files': 'Minimum JS files required per path (default: 1).',
                 '--env': 'Environment affects threads and timeouts'
             }
