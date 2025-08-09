@@ -25,81 +25,92 @@ from src.modules.fallparams.fallparams import run as fallparams_run
 from src.modules.sqli.sqli_recon import run as sqli_run
 
 def main():
-    parser = argparse.ArgumentParser(description="MJSRecon: Modular JavaScript Reconnaissance Tool", add_help=False)
-    
-    # Define commands and their corresponding functions
-    COMMAND_MAP = {
-        'discovery': discovery_run,
-        'validation': validation_run,
-        'processing': processing_run,
-        'download': download_run,
-        'analysis': analysis_run,
-        'fuzzingjs': fuzzingjs_run,
-        'param-passive': param_passive_run,
-        'fallparams': fallparams_run,
-        'sqli': sqli_run,
-        'github': github_run,
-        'gitlab': gitlab_run,
-        'bitbucket': bitbucket_run,
-        'gitea': gitea_run,
-        'reporting': reporting_run,
-    }
-    
-    parser.add_argument('commands', nargs='*', help='Commands to run in sequence.')
-    
+    """Main entry point for the application."""
+    parser = argparse.ArgumentParser(
+        description="MJSRecon - Modular JavaScript Reconnaissance Tool",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  Basic discovery: python run_workflow.py discovery -t example.com
+  Full workflow: python run_workflow.py discovery validation processing download analysis -t example.com
+  With proxy: python run_workflow.py discovery -t example.com --proxy socks5://127.0.0.1:40000
+  Large target: python run_workflow.py discovery -t large-target.com --command-timeout 7200
+
+For detailed help with examples and customization: python run_workflow.py -hhh
+        """
+    )
+
     # Core arguments
-    parser.add_argument('-t', '--target', help='A single target domain (e.g., example.com). For multiple targets, use --targets-file.')
-    parser.add_argument('--targets-file', type=Path, help='A file containing a list of target domains, one per line.')
-    parser.add_argument('-o', '--output', default='./output', type=Path, help='Base output directory.')
+    parser.add_argument('commands', nargs='+', help='Commands to run (discovery, validation, processing, download, analysis, fuzzingjs, param-passive, fallparams, sqli, github, gitlab, bitbucket, gitea, reporting)')
+    parser.add_argument('-t', '--target', help='Target domain or URL')
+    parser.add_argument('--targets-file', help='File with multiple targets (one per line)')
+    parser.add_argument('-o', '--output', default='./output', help='Output directory (default: ./output)')
     parser.add_argument('--env', choices=['development', 'production', 'testing'], default='development', help='Configuration environment to use.')
-    
-    # General options
-    parser.add_argument('--independent', action='store_true', help='Run a single command independently. Requires --input.')
-    parser.add_argument('--input', type=Path, help='Input file for a module in independent mode.')
-    
-    # Logging
-    parser.add_argument('-v', '--verbose', action='store_true', help='Enable verbose (DEBUG level) logging.')
-    parser.add_argument('-q', '--quiet', action='store_true', help='Suppress console output except for warnings and errors.')
-    parser.add_argument('--timestamp-format', default='%H:%M:%S', help='Timestamp format for console output (default: %H:%M:%S)')
-    
-    # Proxy options
-    parser.add_argument('--proxy', help='Proxy URL (e.g., socks5://127.0.0.1:1080, http://proxy:8080)')
+    parser.add_argument('--independent', action='store_true', help='Run a single module independently (requires --input)')
+    parser.add_argument('--input', help='Input file for independent mode')
+    parser.add_argument('--command-timeout', type=int, help='Override command timeout in seconds (default: from config)')
+
+    # Discovery arguments
+    parser.add_argument('--gather-mode', default='gwk', help='Discovery tools to use: g=gau, w=waybackurls, k=katana (default: gwk)')
+    parser.add_argument('-d', '--depth', type=int, default=2, help='Katana crawl depth (default: 2)')
+    parser.add_argument('--uro', action='store_true', help='Use uro to deduplicate/shorten URLs after discovery')
+
+    # Proxy arguments
+    parser.add_argument('--proxy', help='Proxy URL (e.g., socks5://127.0.0.1:40000, http://proxy:8080)')
     parser.add_argument('--proxy-auth', help='Proxy authentication (username:password)')
     parser.add_argument('--no-proxy', help='Comma-separated list of hosts to bypass proxy')
     parser.add_argument('--proxy-timeout', type=int, default=30, help='Proxy connection timeout in seconds (default: 30)')
     parser.add_argument('--proxy-verify-ssl', action='store_true', help='Verify SSL certificates when using proxy')
-    
-    # Discovery options
-    parser.add_argument('--gather-mode', choices=['g', 'w', 'k', 'gw', 'gk', 'wk', 'gwk'], default='gwk', help='Tools to use for discovery: g=gau, w=wayback, k=katana.')
-    parser.add_argument('-d', '--depth', type=int, default=2, help='Katana crawl depth.')
-    parser.add_argument('--uro', action='store_true', help='Use uro to deduplicate/shorten URLs after discovery and use its output for all subsequent modules.')
-    
-    # Fuzzing options
-    parser.add_argument('--fuzz-mode', choices=['wordlist', 'permutation', 'both', 'off'], default='off', help='Fuzzing mode.')
-    parser.add_argument('--fuzz-wordlist', type=Path, help='Custom wordlist for fuzzing.')
-    
-    # SQLi options
-    parser.add_argument('--sqli-scanner', choices=['sqlmap', 'ghauri'], default='sqlmap', help='SQLi scanner to use (sqlmap or ghauri)')
+
+    # Fuzzing arguments
+    parser.add_argument('--fuzz-mode', choices=['wordlist', 'permutation', 'both', 'off'], default='off', help='Fuzzing mode (default: off)')
+    parser.add_argument('--fuzz-wordlist', help='Custom wordlist for fuzzing')
+
+    # SQL injection arguments
+    parser.add_argument('--sqli-scanner', choices=['sqlmap', 'ghauri'], default='sqlmap', help='SQLi scanner to use (default: sqlmap)')
     parser.add_argument('--sqli-full-scan', action='store_true', help='Run full SQLi scan including automated scanning')
     parser.add_argument('--sqli-manual-blind', action='store_true', help='Run manual blind SQLi test (time-based) - DEFAULT MODE')
     parser.add_argument('--sqli-header-test', action='store_true', help='Run header-based blind SQLi test')
     parser.add_argument('--sqli-xor-test', action='store_true', help='Run XOR blind SQLi test')
-    
-    # Performance options
-    parser.add_argument('--command-timeout', type=int, help='Override command timeout in seconds (default: from config)')
-    
-    # Help options
-    parser.add_argument('-h', '--help', action='store_true', help='Show the main help message and exit.')
-    parser.add_argument('--help-command', choices=COMMAND_MAP.keys(), help='Show detailed help for a specific command.')
+
+    # Logging arguments
+    parser.add_argument('-v', '--verbose', action='store_true', help='Enable verbose (DEBUG level) logging')
+    parser.add_argument('-q', '--quiet', action='store_true', help='Suppress console output except for warnings/errors')
+    parser.add_argument('--timestamp-format', default='%H:%M:%S', help='Timestamp format for console output (default: %%H:%%M:%%S)')
+
+    # Help arguments
+    parser.add_argument('-h', '--help', action='store_true', help='Show minimal help')
+    parser.add_argument('-hh', action='store_true', help='Show short help with options')
+    parser.add_argument('-hhh', action='store_true', help='Show extended help with examples and customization guide')
 
     args = parser.parse_args()
 
     # Handle help requests
-    if args.help or len(sys.argv) == 1:
+    if args.hhh:
+        from src.common.help_ui import show_help_extended
+        show_help_extended()
+        return
+
+    if args.hh:
+        from src.common.help_ui import show_help
         show_help()
         return
-    if args.help_command:
-        show_command_help(args.help_command)
+
+    if args.help:
+        from src.common.help_ui import show_help_minimal
+        show_help_minimal()
+        return
+
+    # Handle regular help
+    if len(args.commands) == 1 and args.commands[0] in ['help', '--help', '-h']:
+        from src.common.help_ui import show_help_minimal
+        show_help_minimal()
+        return
+
+    # Handle command-specific help
+    if len(args.commands) == 2 and args.commands[0] == 'help':
+        from src.common.help_ui import show_command_help
+        show_command_help(args.commands[1])
         return
     
     # Setup logger with timestamp format
