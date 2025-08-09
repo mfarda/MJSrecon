@@ -29,15 +29,15 @@ def show_help():
     cmd_table.add_column("Command", style="cyan", no_wrap=True)
     cmd_table.add_column("Description")
     commands = {
-        'discovery': 'Gathers JS URLs from various sources (gau, waybackurls, katana).',
-        'validation': 'Verifies that discovered URLs are live and accessible.',
-        'processing': 'Deduplicates live URLs based on content hash.',
-        'download': 'Downloads unique JS files asynchronously.',
+        'discovery': 'Discovers JavaScript URLs from various sources (gau, waybackurls, katana).',
+        'validation': 'Validates discovered URLs are live and accessible.',
+        'processing': 'Deduplicates URLs based on content hash.',
+        'download': 'Downloads JavaScript files asynchronously (supports multiple extensions).',
         'analysis': 'Analyzes downloaded files for secrets and endpoints.',
-        'fuzzingjs': 'Fuzzes directories for more JS files.',
+        'fuzzingjs': 'Performs directory and file fuzzing with configurable patterns.',
         'param-passive': 'Extracts parameters and important file types.',
         'fallparams': 'Performs dynamic parameter discovery on key URLs.',
-        'sqli': 'Performs SQL injection reconnaissance and testing on discovered URLs.',
+        'sqli': 'Performs SQL injection reconnaissance with configurable detection patterns.',
         'github': 'Scans GitHub for repositories, secrets, and useful data.',
         'gitlab': 'Scans GitLab for repositories, secrets, and useful data.',
         'bitbucket': 'Scans Bitbucket for repositories, secrets, and useful data.',
@@ -187,6 +187,12 @@ python run_workflow.py reporting --independent --input analysis_results.json -o 
 • CLI overrides for timeouts and proxy settings
 • External tool paths and settings
 
+[bold]Configurable Features:[/bold]
+• Download file extensions (.js, .jsx, .ts, .tsx, .vue, .json)
+• Fuzzing patterns (prefixes, suffixes, separators)
+• SQL injection detection patterns
+• All module timeouts and settings
+
 [bold]Proxy Support:[/bold]
 • SOCKS5 proxy (WARP, etc.)
 • HTTP/HTTPS proxy
@@ -201,7 +207,46 @@ python run_workflow.py reporting --independent --input analysis_results.json -o 
 • Progress tracking
 • Partial output preservation on timeout
     """, title="[bold blue]Key Features[/bold blue]", border_style="blue")
+
+    # Customization Info
+    customization_panel = Panel("""
+[bold]Customization Examples:[/bold]
+
+[bold]Add New File Extensions:[/bold]
+Edit config/defaults.yaml:
+download:
+  allowed_extensions:
+    - ".js"
+    - ".jsx"
+    - ".ts"
+    - ".tsx"
+    - ".vue"
+    - ".json"
+    - ".map"  # Add source maps
+
+[bold]Custom Fuzzing Patterns:[/bold]
+Edit config/defaults.yaml:
+enumeration:
+  prefixes:
+    - "app"
+    - "lib"
+    - "custom"  # Add your prefix
+  suffixes:
+    - "bundle"
+    - "min"
+    - "custom"  # Add your suffix
+
+[bold]Custom SQL Injection Patterns:[/bold]
+Edit config/defaults.yaml:
+sqli:
+  vulnerable_extensions:
+    - ".php"
+    - ".asp"
+    - ".custom"  # Add your extension
+    """, title="[bold green]Customization Guide[/bold green]", border_style="green")
+    
     console.print(config_panel)
+    console.print(customization_panel)
 
 def show_command_help(command: str):
     """Shows detailed help for a specific command."""
@@ -239,8 +284,9 @@ def show_command_help(command: str):
             }
         },
         'download': {
-            'description': 'Downloads JavaScript files asynchronously for analysis.',
-            'output': 'downloaded_js_files/',
+            'description': 'Downloads JavaScript files asynchronously with multi-extension support.',
+            'output': 'downloaded_files/ (with extension subdirectories)',
+            'configurable': 'File extensions in config/download.allowed_extensions',
             'options': {
                 '--proxy': 'Use proxy for downloads',
                 '--concurrent': 'Number of concurrent downloads'
@@ -256,8 +302,9 @@ def show_command_help(command: str):
             }
         },
         'fuzzingjs': {
-            'description': 'Performs directory and file fuzzing to discover additional JavaScript files.',
+            'description': 'Performs directory and file fuzzing with configurable patterns.',
             'output': 'fuzzed_urls.txt',
+            'configurable': 'Patterns in config/enumeration (prefixes, suffixes, separators)',
             'options': {
                 '--fuzz-mode': 'Fuzzing mode (wordlist, permutation, both, off)',
                 '--fuzz-wordlist': 'Custom wordlist for fuzzing'
@@ -266,6 +313,7 @@ def show_command_help(command: str):
         'param-passive': {
             'description': 'Extracts parameters and important file types from discovered URLs.',
             'output': 'parameters.txt',
+            'configurable': 'Important extensions in config/param_passive.important_extensions',
             'options': {
                 '--extensions': 'File extensions to extract parameters from'
             }
@@ -278,9 +326,10 @@ def show_command_help(command: str):
             }
         },
         'sqli': {
-            'description': 'Performs SQL injection reconnaissance and testing.',
+            'description': 'Performs SQL injection reconnaissance with configurable detection patterns.',
             'output': 'sqli_results/',
-            'tools': ['sqlmap', 'ghauri'],
+            'tools': ['sqlmap', 'ghauri', 'gf'],
+            'configurable': 'Patterns in config/sqli (vulnerable_extensions, vulnerable_files, sql_indicators)',
             'options': {
                 '--sqli-scanner': 'Scanner to use (sqlmap, ghauri)',
                 '--sqli-full-scan': 'Run full automated scan',
@@ -343,6 +392,9 @@ def show_command_help(command: str):
         console.print(f"[bold]Tools:[/bold] {tools_str}")
     
     console.print(f"[bold]Output:[/bold] {help_info['output']}")
+    
+    if 'configurable' in help_info:
+        console.print(f"[bold]Configurable:[/bold] {help_info['configurable']}")
     
     if 'options' in help_info:
         opt_table = Table(title="[bold]Command Options[/bold]", box=box.SIMPLE)

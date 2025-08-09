@@ -8,11 +8,11 @@ A comprehensive, modular JavaScript reconnaissance tool designed for security re
 - **URL Discovery**: Multi-source JavaScript URL discovery using gau, waybackurls, and katana
 - **URL Validation**: Verify discovered URLs are live and accessible
 - **Content Deduplication**: Remove duplicate content using hash-based deduplication
-- **Asynchronous Downloads**: Fast, concurrent JavaScript file downloads
+- **Asynchronous Downloads**: Fast, concurrent JavaScript file downloads with multi-extension support
 - **Secret Analysis**: Advanced secret detection using multiple tools and patterns
-- **Directory Fuzzing**: Discover additional JavaScript files through fuzzing
+- **Directory Fuzzing**: Discover additional JavaScript files through fuzzing with configurable patterns
 - **Parameter Extraction**: Passive and active parameter discovery
-- **SQL Injection Testing**: Comprehensive SQL injection reconnaissance
+- **SQL Injection Testing**: Comprehensive SQL injection reconnaissance with configurable detection patterns
 - **Code Hosting Scanners**: GitHub, GitLab, Bitbucket, and Gitea scanning
 - **Report Generation**: Comprehensive reporting and analysis
 
@@ -24,6 +24,7 @@ A comprehensive, modular JavaScript reconnaissance tool designed for security re
 - **URL Deduplication**: uro integration for URL shortening and deduplication
 - **Progress Tracking**: Real-time progress bars and logging
 - **Modular Architecture**: Easy to extend and customize
+- **Configurable Patterns**: All detection patterns, file extensions, and wordlists are configurable
 
 ## 📦 Installation
 
@@ -86,6 +87,9 @@ git clone https://github.com/sqlmapproject/sqlmap.git
 
 # ghauri - Alternative SQL injection scanner
 pip install ghauri
+
+# gf - URL filtering
+go install github.com/tomnomnom/gf@latest
 ```
 
 ## 🛠️ Configuration
@@ -93,7 +97,7 @@ pip install ghauri
 ### Environment Configuration
 MJSRecon uses environment-specific configuration files:
 
-- `config/defaults.yaml` - Base configuration
+- `config/defaults.yaml` - Base configuration with all module settings
 - `config/environments.yaml` - Environment-specific overrides
 - `config/*_scanner.yaml` - Scanner-specific configurations
 
@@ -101,6 +105,69 @@ MJSRecon uses environment-specific configuration files:
 - **Development**: Fast scans, minimal timeouts, debug logging
 - **Production**: Optimized for real-world scanning, extended timeouts
 - **Testing**: Minimal resource usage, quick validation
+
+### Key Configuration Sections
+
+#### Download Module
+```yaml
+download:
+  allowed_extensions:
+    - ".js"
+    - ".jsx"
+    - ".ts"
+    - ".tsx"
+    - ".vue"
+    - ".json"
+  max_concurrent: 10
+  timeout: 30
+```
+
+#### Fuzzing Module
+```yaml
+enumeration:
+  prefixes:
+    - "app"
+    - "lib"
+    - "vendor"
+    - "dist"
+    - "src"
+    - "core"
+    - "main"
+  suffixes:
+    - "bundle"
+    - "min"
+    - "dev"
+    - "prod"
+    - "v1"
+    - "v2"
+  separators:
+    - ""
+    - "-"
+    - "_"
+    - "."
+```
+
+#### SQL Injection Module
+```yaml
+sqli:
+  vulnerable_extensions:
+    - ".php"
+    - ".asp"
+    - ".aspx"
+    - ".jsp"
+    - ".jspx"
+    - ".do"
+    - ".action"
+  vulnerable_files:
+    - "product.php"
+    - "view.php"
+    # ... 40+ file patterns
+  sql_indicators:
+    - "select"
+    - "union"
+    - "insert"
+    # ... 13 SQL indicators
+```
 
 ### Setting Up API Tokens
 Create `config/secrets.yaml` from `config/secrets.yaml.example`:
@@ -160,12 +227,12 @@ python run_workflow.py discovery validation processing -t example.com --uro
 | `discovery` | Discovers JavaScript URLs from various sources |
 | `validation` | Validates discovered URLs are live |
 | `processing` | Deduplicates URLs based on content hash |
-| `download` | Downloads JavaScript files asynchronously |
+| `download` | Downloads JavaScript files asynchronously (supports multiple extensions) |
 | `analysis` | Analyzes files for secrets and endpoints |
-| `fuzzingjs` | Performs directory and file fuzzing |
+| `fuzzingjs` | Performs directory and file fuzzing with configurable patterns |
 | `param-passive` | Extracts parameters from URLs |
 | `fallparams` | Dynamic parameter discovery |
-| `sqli` | SQL injection reconnaissance |
+| `sqli` | SQL injection reconnaissance with configurable detection patterns |
 | `github` | GitHub secrets and repository scanning |
 | `gitlab` | GitLab secrets and repository scanning |
 | `bitbucket` | Bitbucket secrets and repository scanning |
@@ -178,7 +245,7 @@ python run_workflow.py discovery validation processing -t example.com --uro
 | `-t, --target` | Target domain or URL |
 | `--targets-file` | File with multiple targets |
 | `-o, --output` | Output directory |
-| `--env` | Configuration environment |
+| `--env` | Configuration environment (development/production/testing) |
 | `--proxy` | Proxy URL (SOCKS5/HTTP) |
 | `--command-timeout` | Override command timeout |
 | `--independent` | Run single module mode |
@@ -190,7 +257,12 @@ python run_workflow.py discovery validation processing -t example.com --uro
 ## 🔧 Configuration Files
 
 ### Default Configuration (`config/defaults.yaml`)
-Contains base settings for all modules, timeouts, and tool configurations.
+Contains comprehensive settings for all modules:
+- **Download**: File extensions, concurrency, timeouts
+- **Fuzzing**: Prefixes, suffixes, separators for wordlist generation
+- **SQLi**: Vulnerable extensions, file patterns, SQL indicators
+- **Analysis**: Tool configurations and timeouts
+- **All modules**: Timeouts, file paths, directory structures
 
 ### Environment Overrides (`config/environments.yaml`)
 Environment-specific settings for development, production, and testing.
@@ -219,6 +291,8 @@ output/
 │   │   └── logs/
 │   ├── download/
 │   │   ├── downloaded_js_files/
+│   │   ├── downloaded_jsx_files/
+│   │   ├── downloaded_ts_files/
 │   │   └── logs/
 │   ├── analysis/
 │   │   ├── analysis_results.json
@@ -276,6 +350,66 @@ Use testing environment for memory-constrained systems:
 python run_workflow.py discovery -t example.com --env testing
 ```
 
+## 🔧 Customization
+
+### Adding New File Extensions
+Edit `config/defaults.yaml`:
+```yaml
+download:
+  allowed_extensions:
+    - ".js"
+    - ".jsx"
+    - ".ts"
+    - ".tsx"
+    - ".vue"
+    - ".json"
+    - ".map"  # Add source maps
+    - ".mjs"  # Add ES modules
+```
+
+### Custom Fuzzing Patterns
+Edit `config/defaults.yaml`:
+```yaml
+enumeration:
+  prefixes:
+    - "app"
+    - "lib"
+    - "vendor"
+    - "dist"
+    - "src"
+    - "core"
+    - "main"
+    - "custom"  # Add your custom prefix
+  suffixes:
+    - "bundle"
+    - "min"
+    - "dev"
+    - "prod"
+    - "v1"
+    - "v2"
+    - "custom"  # Add your custom suffix
+```
+
+### Custom SQL Injection Patterns
+Edit `config/defaults.yaml`:
+```yaml
+sqli:
+  vulnerable_extensions:
+    - ".php"
+    - ".asp"
+    - ".aspx"
+    - ".jsp"
+    - ".jspx"
+    - ".do"
+    - ".action"
+    - ".custom"  # Add your custom extension
+  vulnerable_files:
+    - "product.php"
+    - "view.php"
+    # ... existing patterns
+    - "custom.php"  # Add your custom file pattern
+```
+
 ## 🐛 Troubleshooting
 
 ### Common Issues
@@ -299,6 +433,11 @@ python run_workflow.py discovery -t example.com --env testing
 - Check file permissions
 - Run with appropriate user privileges
 - Verify output directory is writable
+
+#### Configuration Issues
+- Check `config/defaults.yaml` for missing settings
+- Verify environment-specific overrides in `config/environments.yaml`
+- Ensure all required configuration keys are present
 
 ### Debug Mode
 Enable verbose logging for troubleshooting:
@@ -343,4 +482,5 @@ This tool is for educational and authorized security testing purposes only. User
 - [uro](https://github.com/s0md3v/uro) - URL deduplication
 - [linkfinder](https://github.com/GerbenJavado/LinkFinder) - JavaScript analysis
 - [trufflehog](https://github.com/trufflesecurity/trufflehog) - Secret scanning
-- [sqlmap](https://github.com/sqlmapproject/sqlmap) - SQL injection testing 
+- [sqlmap](https://github.com/sqlmapproject/sqlmap) - SQL injection testing
+- [gf](https://github.com/tomnomnom/gf) - URL filtering 
