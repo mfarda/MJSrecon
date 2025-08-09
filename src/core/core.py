@@ -133,7 +133,7 @@ For detailed help with examples and customization: python run_workflow.py -hhh
         return
     
     # Setup logger with timestamp format
-    logger = Logger(log_dir=args.output, verbose=args.verbose, quiet=args.quiet, timestamp_format=args.timestamp_format)
+    logger = Logger(log_dir=Path(args.output), verbose=args.verbose, quiet=args.quiet, timestamp_format=args.timestamp_format)
     
     # Load configuration
     config = load_config(args.env)
@@ -188,7 +188,7 @@ For detailed help with examples and customization: python run_workflow.py -hhh
         if not args.input:
             logger.error(f"The '{args.commands[0]}' command in independent mode requires an --input file.")
             return
-        if not args.input.exists():
+        if not Path(args.input).exists():
             logger.error(f"Input file not found: {args.input}")
             return
             
@@ -206,7 +206,7 @@ For detailed help with examples and customization: python run_workflow.py -hhh
         targets.append(args.target)
     elif args.targets_file:
         try:
-            with args.targets_file.open('r') as f:
+            with Path(args.targets_file).open('r') as f:
                 targets = [line.strip() for line in f if line.strip()]
         except Exception as e:
             logger.error(f"Could not read targets file {args.targets_file}: {e}")
@@ -215,7 +215,7 @@ For detailed help with examples and customization: python run_workflow.py -hhh
     # --- Workflow Execution ---
     for target in targets:
         logger.info(f"🚀 Starting workflow for target: {target}")
-        target_output_dir = args.output / target
+        target_output_dir = Path(args.output) / target
         ensure_dir(target_output_dir)
         
         workflow_data = {
@@ -227,7 +227,7 @@ For detailed help with examples and customization: python run_workflow.py -hhh
         if args.independent and args.input:
             try:
                 logger.info(f"Loading URLs from input file: {args.input}")
-                with args.input.open('r') as f:
+                with Path(args.input).open('r') as f:
                     urls = set(line.strip() for line in f if line.strip())
                 workflow_data['all_urls'] = urls
                 logger.info(f"Loaded {len(urls)} URLs from input file")
